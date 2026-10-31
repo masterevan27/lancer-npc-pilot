@@ -72,7 +72,7 @@ test('anthropic: forwards a Messages API request and normalizes the reply', asyn
   assert.equal(r.headers['anthropic-version'], ANTHROPIC_VERSION);
   assert.equal(r.headers['anthropic-beta'], 'server-side-fallback-2026-07-01');
   assert.deepEqual(r.body, {
-    model: 'claude-sonnet-5-5', max_tokens: 900, fallbacks: 'default',
+    model: 'claude-opus-5-5', max_tokens: 900, fallbacks: 'default',
     system: 'You are an NPC pilot. Reply with JSON only.',
     messages: [{ role: 'user', content: 'Options: 1) attack 2) hide' }],
   });
