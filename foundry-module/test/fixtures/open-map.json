@@ -1,0 +1,538 @@
+{
+ "round": 2,
+ "activeTokenId": "npc1",
+ "grid": {
+  "type": "square",
+  "size": 100,
+  "distance": 1,
+  "diagonals": "equidistant",
+  "width": 20,
+  "height": 20
+ },
+ "tokens": [
+  {
+   "id": "npc1",
+   "actorId": "a-npc1",
+   "name": "Assault Mk II",
+   "side": "hostile",
+   "isNpc": true,
+   "pos": {
+    "x": 5,
+    "y": 10
+   },
+   "size": 1,
+   "hp": [
+    10,
+    10
+   ],
+   "heat": [
+    0,
+    8
+   ],
+   "structure": [
+    1,
+    1
+   ],
+   "stress": [
+    1,
+    1
+   ],
+   "armor": 1,
+   "evasion": 8,
+   "edef": 8,
+   "speed": 4,
+   "sensors": 10,
+   "statuses": [],
+   "weapons": [
+    {
+     "itemId": "w-rifle",
+     "name": "Assault Rifle",
+     "type": "Rifle",
+     "range": [
+      {
+       "type": "Range",
+       "val": 10
+      }
+     ],
+     "damage": "1d6+2 Kinetic",
+     "accuracy": 0,
+     "attackBonus": 1,
+     "tags": [
+      "Loading"
+     ],
+     "loaded": true,
+     "uses": null
+    },
+    {
+     "itemId": "w-knife",
+     "name": "Combat Knife",
+     "type": "Melee",
+     "range": [
+      {
+       "type": "Threat",
+       "val": 1
+      }
+     ],
+     "damage": "1d3+1 Kinetic",
+     "accuracy": 0,
+     "attackBonus": 1,
+     "tags": [],
+     "loaded": true,
+     "uses": null
+    }
+   ],
+   "features": [
+    {
+     "itemId": "f1",
+     "name": "Hunker Down",
+     "kind": "trait",
+     "text": "..."
+    }
+   ],
+   "persona": "Disciplined line infantry. Keeps range, uses cover."
+  },
+  {
+   "id": "pc1",
+   "actorId": "a-pc1",
+   "name": "Lancaster \"Mule\"",
+   "side": "friendly",
+   "isNpc": false,
+   "pos": {
+    "x": 14,
+    "y": 10
+   },
+   "size": 1,
+   "hp": [
+    7,
+    12
+   ],
+   "heat": [
+    0,
+    6
+   ],
+   "structure": [
+    4,
+    4
+   ],
+   "stress": [
+    4,
+    4
+   ],
+   "armor": 0,
+   "evasion": 8,
+   "edef": 8,
+   "speed": 4,
+   "sensors": 10,
+   "statuses": [],
+   "weapons": [
+    {
+     "itemId": "pc1-rifle",
+     "name": "Assault Rifle",
+     "type": "Rifle",
+     "range": [
+      {
+       "type": "Range",
+       "val": 10
+      }
+     ],
+     "damage": "1d6+2 Kinetic",
+     "accuracy": 0,
+     "attackBonus": 1,
+     "tags": [
+      "Loading"
+     ],
+     "loaded": true,
+     "uses": null
+    }
+   ],
+   "features": []
+  },
+  {
+   "id": "pc2",
+   "actorId": "a-pc2",
+   "name": "Everest \"Kite\"",
+   "side": "friendly",
+   "isNpc": false,
+   "pos": {
+    "x": 15,
+    "y": 4
+   },
+   "size": 1,
+   "hp": [
+    12,
+    12
+   ],
+   "heat": [
+    0,
+    6
+   ],
+   "structure": [
+    4,
+    4
+   ],
+   "stress": [
+    4,
+    4
+   ],
+   "armor": 1,
+   "evasion": 8,
+   "edef": 8,
+   "speed": 4,
+   "sensors": 10,
+   "statuses": [],
+   "weapons": [
+    {
+     "itemId": "pc2-rifle",
+     "name": "Assault Rifle",
+     "type": "Rifle",
+     "range": [
+      {
+       "type": "Range",
+       "val": 10
+      }
+     ],
+     "damage": "1d6+2 Kinetic",
+     "accuracy": 0,
+     "attackBonus": 1,
+     "tags": [
+      "Loading"
+     ],
+     "loaded": true,
+     "uses": null
+    }
+   ],
+   "features": []
+  }
+ ],
+ "blocked": [],
+ "cover": {
+  "6,8": "hard",
+  "7,11": "soft"
+ },
+ "losFrom": {
+  "5,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,10": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,9": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,11": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,8": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,12": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,7": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,13": {
+   "pc1": true,
+   "pc2": true
+  },
+  "5,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "4,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "6,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "3,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "7,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "2,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "8,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,6": {
+   "pc1": true,
+   "pc2": true
+  },
+  "1,14": {
+   "pc1": true,
+   "pc2": true
+  },
+  "9,14": {
+   "pc1": true,
+   "pc2": true
+  }
+ }
+}
