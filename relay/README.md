@@ -53,7 +53,7 @@ the real environment override `relay\.env`.
 |---|---|---|
 | `PILOT_SHARED_SECRET` | none (required) | Must match the `X-Pilot-Secret` header. |
 | `ANTHROPIC_API_KEY` | empty | Without it the `anthropic` provider answers 503. |
-| `ANTHROPIC_MODEL` | `claude-sonnet-5-5` | Default Claude model; a request may override it. |
+| `ANTHROPIC_MODEL` | `claude-opus-5-5` | Default Claude model; a request may override it. `claude-sonnet-5-5` is cheaper. Opus 5.5 defaults to medium effort; `ANTHROPIC_EFFORT=low` is cheaper still. |
 | `ANTHROPIC_EFFORT` | unset | `low`, `medium`, `high`, `xhigh` or `max`. Unset uses the model's default. `low` is cheaper and faster for picking from a list. |
 | `ANTHROPIC_FALLBACKS` | `default` | `default` sends `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`), so a request the model declines is retried on another model server-side. `off` disables it. Never sent for Haiku models. |
 | `ANTHROPIC_BASE_URL` | `https://api.anthropic.com` | For tests. |
@@ -78,7 +78,7 @@ All routes except the CORS preflight need the `X-Pilot-Secret` header.
 ```json
 {"ok": true, "service": "lancer-npc-pilot-relay", "version": "0.1.0",
  "providers": {
-   "anthropic": {"configured": true, "keyPresent": true, "model": "claude-sonnet-5-5", "baseUrl": "https://api.anthropic.com", "effort": null},
+   "anthropic": {"configured": true, "keyPresent": true, "model": "claude-opus-5-5", "baseUrl": "https://api.anthropic.com", "effort": null},
    "openai": {"configured": true, "keyPresent": false, "model": "gpt-oss:20b", "baseUrl": "http://127.0.0.1:11434/v1"}}}
 ```
 
@@ -99,7 +99,7 @@ Request (`Content-Type: application/json`):
 last message must be `user`. Response:
 
 ```json
-{"text": "{\"option\":\"o3\",...}", "provider": "anthropic", "model": "claude-sonnet-5-5",
+{"text": "{\"option\":\"o3\",...}", "provider": "anthropic", "model": "claude-opus-5-5",
  "stopReason": "end_turn", "usage": {"inputTokens": 812, "outputTokens": 40},
  "ignored": ["temperature"]}
 ```
@@ -144,7 +144,7 @@ relay against a local mock upstream; they make no real model calls.
 Cloud development can't reach the owner PC or the Anthropic API with a real
 key, so these are checked only against mocks:
 
-- A real Anthropic Messages call (key, `claude-sonnet-5-5`, the
+- A real Anthropic Messages call (key, `claude-opus-5-5`, the
   `2026-10-21` API version, the `fallbacks` beta, `ANTHROPIC_EFFORT`).
 - A real Ollama `/v1/chat/completions` call with gpt-oss, including how much
   of `maxTokens` its reasoning uses.

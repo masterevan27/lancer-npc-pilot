@@ -11,7 +11,7 @@ export const DEFAULTS = Object.freeze({
   PILOT_ALLOWED_ORIGINS: 'https://foundry.lab.spiralfrenzy.com',
   ANTHROPIC_BASE_URL: 'https://api.anthropic.com',
   // Current Sonnet (claude-api skill, models cached 2026-10-06). Override with ANTHROPIC_MODEL.
-  ANTHROPIC_MODEL: 'claude-sonnet-5-5',
+  ANTHROPIC_MODEL: 'claude-opus-5-5',
   OPENAI_BASE_URL: 'http://127.0.0.1:11434/v1',
   OPENAI_MODEL: 'gpt-oss:20b',
   PILOT_UPSTREAM_TIMEOUT_MS: 120_000,

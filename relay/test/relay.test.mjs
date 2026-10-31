@@ -170,7 +170,7 @@ test('health: reports providers and key presence, never the key', async () => {
   assert.equal(j.ok, true);
   assert.equal(j.providers.anthropic.configured, true);
   assert.equal(j.providers.anthropic.keyPresent, true);
-  assert.equal(j.providers.anthropic.model, 'claude-sonnet-5-5');
+  assert.equal(j.providers.anthropic.model, 'claude-opus-5-5');
   assert.equal(j.providers.openai.configured, true);
   assert.equal(j.providers.openai.keyPresent, false);
   assert.equal(j.providers.openai.model, 'gpt-oss:20b');
