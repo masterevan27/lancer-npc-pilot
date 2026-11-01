@@ -1,0 +1,11 @@
+{
+  "id": "lancer-npc-pilot",
+  "title": "Lancer NPC Pilot",
+  "description": "GM-reviewed NPC turn proposals with a local model relay. Execution defaults off pending staged acceptance.",
+  "version": "0.2.0",
+  "compatibility": { "minimum": "13", "verified": "13.351", "maximum": "13" },
+  "authors": [{ "name": "Evan" }],
+  "esmodules": ["scripts/pilot.mjs"],
+  "styles": ["styles/pilot.css"],
+  "relationships": { "systems": [{ "id": "lancer", "type": "system", "compatibility": { "minimum": "3.1.3" } }] }
+}

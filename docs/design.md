@@ -1,6 +1,9 @@
 # Lancer NPC Pilot — design
 
-Status: initial design, 2026-10-31. The owner asked for building to start
+Status: design from 2026-10-31; relay, core and the first Foundry adapter subset
+are implemented on a development branch as of 2026-11-01. Live acceptance has
+not run. The [adapter guide](foundry-adapter.md) records current restrictions;
+the broader goals below remain the intended direction. The owner asked for building to start
 without a question round, so choices marked *(builder's call)* were made by
 the agent and may be revisited.
 
@@ -153,8 +156,8 @@ labelled "fallback" in the UI.
 - CORS: allow only the origins in `PILOT_ALLOWED_ORIGINS` (default
   `https://foundry.lab.spiralfrenzy.com`), and handle the PNA preflight.
 - Config comes from env vars or a Git-ignored `relay/.env`:
-  `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (default: a current Sonnet model;
-  check the id with the claude-api skill or the Models API), `OPENAI_BASE_URL`
+  `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (current relay default:
+  `claude-opus-5-5`; actual API access remains unverified), `OPENAI_BASE_URL`
   (default `http://127.0.0.1:11434/v1`), `OPENAI_MODEL` (default: whatever
   `ollama list` shows as suitable; the owner runs gpt-oss), `PORT=5090`,
   `HOST=127.0.0.1`.

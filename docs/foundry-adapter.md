@@ -1,0 +1,182 @@
+---
+type: Runbook
+title: Foundry adapter setup and acceptance
+description: Install and review the first GM-only adapter subset without implying live acceptance.
+status: draft
+tags: [foundry, operations, testing]
+sources:
+  - id: runtime
+    resource: ../foundry-module/scripts/pilot.mjs
+  - id: snapshot
+    resource: ../foundry-module/scripts/adapter/snapshot.mjs
+  - id: executor
+    resource: ../foundry-module/scripts/adapter/executor.mjs
+  - id: controller
+    resource: ../foundry-module/scripts/adapter/controller.mjs
+  - id: design
+    resource: design.md
+generated:
+  by: codex/unrecorded
+  at: 2026-11-01T07:16:09Z
+stale_after: 2027-01-30T00:00:00Z
+---
+# Foundry adapter setup and acceptance
+
+Version 0.2.0 adds the source for a GM-only Foundry v13 module. It is not yet
+installed or accepted on the lab game. Execution and turn prompts default off;
+there is no auto-execute mode. Nothing calls a model until the GM requests a
+proposal or explicitly enables turn prompts.
+
+## Install for a staged scene
+
+1. Copy the **contents** of `foundry-module/` into a Foundry user-data module
+   directory named `lancer-npc-pilot`. `module.json` must be at its root.
+   This repository does not yet publish an installable manifest or release zip.
+2. Enable **Lancer NPC Pilot** in a disposable Lancer world. The reference
+   environment is Foundry 13.351 with Lancer 3.1.3.
+3. Start the [relay](../relay/README.md) on the GM's PC with a shared secret and
+   the Foundry origin in `PILOT_ALLOWED_ORIGINS`. Keep provider API keys in the
+   relay environment only.
+4. As GM, create a Script macro containing:
+
+   ```js
+   await game.modules.get('lancer-npc-pilot').api.planTurn();
+   ```
+
+   **Alt+P** opens the same workflow. First use opens Relay settings. Choose
+   Local / OpenAI compatible or Anthropic API, enter the relay shared secret,
+   and optionally override the model. A blank override uses the relay setting.
+   These values are browser-client settings; a provider API key is never needed
+   in Foundry. The saved shared secret is not inserted into rendered HTML.
+5. Start a combat and select a fresh NPC turn, with full movement and both
+   quick actions available in Lancer's action tracker. Review the ranked
+   alternatives, exact route, model reason, optional NPC line and warnings.
+   An unusable model ID gets one retry, then the top option is labeled
+   **fallback**. A connection error takes no action.
+6. Use **Skip** or **Do it manually** while execution is off. Close also skips.
+   **Re-ask model** makes another model request; **Relay settings** changes
+   provider/model configuration. Anthropic requests incur provider usage.
+7. For a simple staged scene only, use **Review terrain** to confirm that walls
+   and configured terrain account for obstacles and movement costs. Then enable
+   **Enable token execution (staged scenes only)** in module settings and
+   request a new proposal. This reveals **Execute selected** to Foundry's
+   active GM. The radio buttons choose an alternative instead of the model pick.
+
+Optional **Offer a proposal when an NPC turn starts** is a world setting. It
+only opens planning/review on Foundry's active GM client. It never auto-approves.
+If the combat changes while a dialog is open, discard it and request a new
+proposal. A second tab's request cannot approve the first tab's stored object.
+
+## Supported subset
+
+- Equidistant square grids; all tokens are size 1, snapped, at equal elevation.
+- NPC Speed is an integer from 0 to 12. All scene tokens need supported Lancer
+  actors, including hidden enemies; player clients receive no planning API.
+- Fresh NPC turns only; partial movement/action budgets require manual play.
+- Ordinary single-target Range/Threat weapons, move, Boost/retreat and hold.
+  Weapons with scripted effect/on-hit text, unknown tags, special area targeting,
+  Smart, Seeking, Arcing, Ordnance or Superheavy classification are omitted.
+  Allowed tags are Loading, Limited, Recharge, Accurate, Inaccurate, Reliable,
+  AP, Overkill and self-heat. Unloaded, destroyed, spent Limited and uncharged Recharge
+  weapons are unavailable. The live system resolves the actor tier.
+- Stunned, Immobilized, Slowed and Impaired are represented by the inherited
+  core. Other active NPC conditions that may affect movement/actions are refused.
+- Walls are checked in each direction using Foundry collision APIs. Missing or
+  inconclusive collision/LOS never becomes permission to move or attack.
+- HIDDEN enemies cannot be attack targets. Paths stop on entering adjacency
+  to a visible enemy of equal or greater Size; an already-engaged NPC must
+  move manually. This deliberately restricts movement rather than approximating
+  Disengage. Hidden enemies do not cause engagement.
+- Region movement rules, hex grids, large tokens, different elevations, Hide,
+  tech attacks, reactions and complex feature activations require manual play.
+
+This is intentionally narrower than the pure core and design. The inherited
+`RULE?` assumptions in the core have **not** all been verified in live Lancer.
+Hit/crit/expected-damage figures are scoring estimates, not predicted outcomes.
+Cover is GM-supplied per cell and remains an approximation. Review engagement,
+special traits and all accuracy/difficulty in the Lancer HUD. Resolve reactions
+along the route manually; Pilot does not resolve Overwatch or damage.
+
+### Terrain and personas
+
+Walls alone do not encode every Lancer terrain rule. Advanced setup can attach
+grid-cell terrain data to the scene before reviewing it:
+
+```js
+await canvas.scene.setFlag('lancer-npc-pilot', 'terrain', {
+  blocked: ['3,4'], difficult: ['4,4', '5,4'], cover: { '6,4': 'hard' },
+  reviewed: false
+});
+```
+
+Coordinates are `column,row`, matching the route shown in the dialog. Changing
+terrain invalidates existing proposals. Mark it unreviewed again after editing
+the map. The GM must include visual obstacles not represented by walls.
+
+An NPC persona is optional:
+
+```js
+await canvas.tokens.controlled[0].actor.setFlag(
+  'lancer-npc-pilot', 'persona', 'Berserker: close to melee and protect allies.'
+);
+```
+
+## What approval does
+
+The controller verifies the stored proposal identity, active turn, actor/item
+data, scene data and collision snapshot before mutation. Only Foundry's active
+GM executes. A browser Web Lock prevents overlapping execution in same-origin
+tabs in that browser; it is not a distributed lock between different browsers.
+A persistent actor turn reservation prevents ordinary reload/replay. Use one GM
+execution browser; do not run the same GM user simultaneously in other browsers.
+
+The executor reserves the turn, moves through approved waypoints (splitting
+Boost after the ordinary movement budget), checks the actual final position and
+unchanged board, updates Lancer's action tracker, selects targets and calls
+`item.beginWeaponAttackFlow()`. The Lancer HUD owns all rolls and later outcome
+handling. An optional NPC line is escaped and posted as **intent — before
+resolution**. Damage is never applied by Pilot.
+
+A cancelled flow, failed chat post or interrupted move may leave part of the
+approved turn spent. There is no automatic retry or rollback; inspect the board
+and finish manually. Pilot conservatively spends the movement allotment for
+its one movement even if the route is shorter than Speed. Remaining quick
+actions are manual. A reservation for this turn survives reloads. In a disposable
+test only, after verifying no action happened, the GM can clear a reservation:
+
+```js
+await canvas.tokens.controlled[0].actor.unsetFlag('lancer-npc-pilot', 'lastExecution');
+```
+
+## Evidence and acceptance gates
+
+Read-only metadata checked on 2026-11-01: lab Foundry 13.351, Lancer 3.1.3,
+no active world. Local source maps from that Lancer version confirm
+`currentProfile()`, `tag.lid`, `system.action_tracker` and
+`beginWeaponAttackFlow()`. Foundry's installed source confirms
+`TokenDocument.move(waypoints, options)` and `_movementHistory` updates.
+
+API references: [v13 grids](https://foundryvtt.com/api/v13/classes/foundry.grid.BaseGrid.html),
+[token collision](https://foundryvtt.com/api/v13/classes/foundry.canvas.placeables.Token.html#checkCollision),
+[movement](https://foundryvtt.com/api/v13/classes/foundry.documents.TokenDocument.html#move),
+[DialogV2](https://foundryvtt.com/api/v13/classes/foundry.applications.api.DialogV2.html).
+
+Local checks use `node --test` and `node --check` on module files. Fixtures and
+mocked Foundry documents do not prove browser, live system or model acceptance.
+Before using execution in a campaign, verify in a disposable staged scene:
+
+- [ ] Module activation, Alt+P, settings, all dialog buttons, player no-op and
+  the correct active GM client; capture a sanitized real review screenshot.
+- [ ] Browser permission and HTTPS-to-loopback access, CORS and relay secret.
+- [ ] Actual local model identifier and a complete model reply; then an
+  owner-authorized Anthropic call with valid model/version settings.
+- [ ] Lancer fresh-turn action tracking, tiered weapon fields and Limited,
+  Loading and Recharge item state in the installed world.
+- [ ] Directed walls, LOS, terrain costs, grid origin/padding and token snapping.
+- [ ] Approval, another alternative, re-ask, skip, manual, stale board/turn,
+  duplicate click/tab, reload and interrupted movement; no unapproved mutation.
+- [ ] Boost boundaries, Lancer attack HUD, target selection, action spending,
+  reactions and damage handoff, including coexistence with NHP Uplink.
+
+These boxes remain open until individually observed. No deployment, live model
+call, paid inference or campaign modification was performed by this task.
