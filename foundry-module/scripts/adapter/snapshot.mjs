@@ -1,6 +1,7 @@
-import { cellKey, neighbors } from '../core/grid.mjs';
+import { cellKey, cellDistance, neighbors } from '../core/grid.mjs';
 import { reachableCells } from '../core/reach.mjs';
 import { normStatus, validateSnapshot } from '../core/snapshot.mjs';
+import { gridInfo, tokenGeometry, insideScene } from './geometry.mjs';
 
 export const MODULE_ID = 'lancer-npc-pilot';
 const ACTIVE_STATUSES = new Set(['IMPAIRED', 'IMMOBILIZED', 'SLOWED', 'STUNNED', 'LOCKON', 'SHREDDED', 'EXPOSED']);
@@ -22,9 +23,9 @@ function stripOwnActorChanges(actor) {
 }
 
 /** Lancer 3.1.3: currentProfile resolves the actor tier; tags use lid, not id. */
-export function readToken(token, grid) {
+export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
   const d = token.document, actor = token.actor, s = actor.system;
-  const offset = grid.getOffset({ x: d.x, y: d.y });
+  const position = geometry.cell;
   const weapons = [];
   for (const item of actor.items ?? []) {
     if (item.type !== 'npc_feature' || item.system.type !== 'Weapon') continue;
@@ -50,7 +51,7 @@ export function readToken(token, grid) {
   }
   return { id: token.id, actorId: actor.id, name: token.name ?? d.name,
     isNpc: actor.type === 'npc', side: d.disposition < 0 ? 'hostile' : d.disposition > 0 ? 'friendly' : 'neutral',
-    pos: { x: offset.j, y: offset.i }, size: number(s.size ?? d.width), hp: pair(s.hp),
+    pos: position, size: number(s.size ?? d.width), hp: pair(s.hp),
     heat: s.heat ? pair(s.heat) : undefined, structure: s.structure ? pair(s.structure) : undefined,
     stress: s.stress ? pair(s.stress) : undefined, overshield: number(s.overshield?.value ?? 0),
     armor: number(s.armor), evasion: number(s.evasion), edef: number(s.edef), speed: number(s.speed),
@@ -68,20 +69,15 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   const active = canvas.tokens.get(combat.combatant?.tokenId);
   if (!active || active.actor?.type !== 'npc' || combat.combatant.defeated) throw Error('The active combatant must be a living NPC.');
   if (active.document.disposition === 0) throw Error('Set the NPC disposition to friendly or hostile first.');
-  if (scene.grid.type !== constants.GRID_TYPES.SQUARE || scene.grid.diagonals !== constants.GRID_DIAGONALS.EQUIDISTANT)
-    throw Error('This adapter currently requires an equidistant square grid.');
+  const grid = gridInfo(scene, canvas.grid, canvas.dimensions, constants);
   if ((scene.regions?.size ?? scene.regions?.length ?? 0) > 0) throw Error('Region movement rules need manual play in this version.');
   const tokens = canvas.tokens.placeables;
+  const geometries = new Map();
   const elevation = active.document.elevation;
   for (const t of tokens) {
     if (!t.actor || !['npc', 'mech', 'pilot', 'deployable'].includes(t.actor.type)) throw Error('Every scene token needs a supported Lancer actor.');
-    if (t.document.width !== 1 || t.document.height !== 1 || Number(t.actor.system.size ?? 1) !== 1)
-      throw Error('This adapter currently supports size-1 tokens only.');
     if (t.document.elevation !== elevation) throw Error('Elevation differences require manual play.');
-    const o = canvas.grid.getOffset({ x: t.document.x, y: t.document.y });
-    const anchor = canvas.grid.getTopLeftPoint(o);
-    if (Math.abs(anchor.x - t.document.x) > 0.01 || Math.abs(anchor.y - t.document.y) > 0.01)
-      throw Error('Snap all tokens to the grid before planning.');
+    geometries.set(t.id, tokenGeometry(t, canvas.grid));
   }
   for (const status of active.actor.statuses ?? []) {
     if (!ACTIVE_STATUSES.has(normStatus(status)) && !String(status).startsWith('resistance_'))
@@ -93,11 +89,9 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   if (expectedTracker ? JSON.stringify(tracker) !== JSON.stringify(expectedTracker)
     : !tracker || tracker.move !== speed || tracker.full !== true || tracker.quick !== true)
     throw Error('Plan at the start of a fresh NPC turn, before spending movement or actions.');
-  const size = scene.grid.size;
   const snapshot = { round: combat.round, activeTokenId: active.id,
-    grid: { type: 'square', diagonals: 'equidistant', size, distance: scene.grid.distance,
-      width: Math.ceil(canvas.dimensions.width / size), height: Math.ceil(canvas.dimensions.height / size) },
-    tokens: tokens.map(t => readToken(t, canvas.grid)), blocked: [], blockedMoves: [], difficult: [], cover: {}, losFrom: {} };
+    grid, tokens: tokens.map(t => readToken(t, canvas.grid, geometries.get(t.id))),
+    blocked: [], blockedMoves: [], difficult: [], cover: {}, losFrom: {} };
   for (const t of snapshot.tokens) {
     if ((combat.combatants?.contents ?? combat.combatants ?? []).some(c => c.tokenId === t.id && c.defeated)) t.defeated = true;
     // Wrecks remain obstacles until the GM removes their token.
@@ -108,9 +102,10 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   snapshot.difficult = [...(terrain.difficult ?? [])]; snapshot.cover = plain(terrain.cover ?? {});
   const mover = snapshot.tokens.find(t => t.id === active.id);
   if (mover.hp[0] <= 0 || mover.defeated) throw Error('The active NPC cannot act while defeated.');
-  const center = c => canvas.grid.getCenterPoint({ i: c.y, j: c.x });
+  const geometry = geometries.get(active.id), center = c => geometry.centerAt(c);
+  const positions = {};
   const rect = canvas.dimensions.sceneRect;
-  const inside = c => { const p = center(c); return p.x >= rect.x && p.y >= rect.y && p.x < rect.x + rect.width && p.y < rect.y + rect.height; };
+  const inside = c => insideScene(geometry.positionAt(c), geometry.dimensions, rect);
   const radius = 2 * speed + 1;
   const hidden = t => t.statuses.some(s => normStatus(s) === 'HIDDEN');
   const engagingEnemies = snapshot.tokens.filter(t => t.side !== mover.side && t.side !== 'neutral'
@@ -119,10 +114,11 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     for (let x = Math.max(0, mover.pos.x - radius); x <= Math.min(snapshot.grid.width - 1, mover.pos.x + radius); x++) {
       const from = { x, y };
       if (!inside(from)) { snapshot.blocked.push(cellKey(from)); continue; }
+      positions[cellKey(from)] = geometry.positionAt(from);
       // Conservatively stop at adjacency, including an already-engaged start.
       // This prevents a path from continuing after entering engagement, without
       // pretending to implement Disengage or reactions.
-      const engaged = engagingEnemies.some(t => Math.max(Math.abs(t.pos.x - x), Math.abs(t.pos.y - y)) <= 1);
+      const engaged = engagingEnemies.some(t => cellDistance(grid, t.pos, from) <= 1);
       for (const to of neighbors(snapshot.grid, from)) {
         if (engaged || !inside(to) || active.checkCollision(center(to), { origin: center(from), type: 'move', mode: 'any' }) !== false)
           snapshot.blockedMoves.push(`${cellKey(from)}>${cellKey(to)}`);
@@ -132,7 +128,7 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   for (const { to } of reachableCells(snapshot, active.id).values()) {
     const los = snapshot.losFrom[cellKey(to)] = {};
     for (const target of snapshot.tokens.filter(t => t.side !== mover.side && t.side !== 'neutral' && !t.defeated)) {
-      los[target.id] = !hidden(target) && active.checkCollision(center(target.pos), { origin: center(to), type: 'sight', mode: 'any' }) === false;
+      los[target.id] = !hidden(target) && active.checkCollision(geometries.get(target.id).center, { origin: center(to), type: 'sight', mode: 'any' }) === false;
     }
   }
   const validation = validateSnapshot(snapshot);
@@ -151,7 +147,7 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     }
     return { token, actor };
   });
-  return { snapshot, turn: `${scene.id}:${combat.id}:${combat.round}:${combat.turn}:${active.id}`,
+  return { snapshot, positions, turn: `${scene.id}:${combat.id}:${combat.round}:${combat.turn}:${active.id}`,
     guard: JSON.stringify({ scene: sceneData, combat: combat.toObject(), tokens: guardTokens }),
     stamp: JSON.stringify({ scene: scene.toObject(), combat: combat.toObject(),
       tokens: tokens.map(t => ({ token: t.document.toObject(), actor: t.actor.toObject() })), snapshot }),

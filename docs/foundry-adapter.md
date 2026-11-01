@@ -11,19 +11,22 @@ sources:
     resource: ../foundry-module/scripts/adapter/snapshot.mjs
   - id: executor
     resource: ../foundry-module/scripts/adapter/executor.mjs
+  - id: geometry
+    resource: ../foundry-module/scripts/adapter/geometry.mjs
   - id: controller
     resource: ../foundry-module/scripts/adapter/controller.mjs
   - id: design
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-01T07:16:09Z
+  at: 2026-11-01T21:19:50Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
 
-Version 0.2.0 adds the source for a GM-only Foundry v13 module. It is not yet
-installed or accepted on the lab game. Execution and turn prompts default off;
+Version 0.3.0 extends the GM-only Foundry v13 module with hex and mixed Size ½/1
+geometry. Version 0.2.0 was installed and passed initial staged square-scene
+proposal/Boost checks; full acceptance of 0.3.0 is still pending. Execution and turn prompts default off;
 there is no auto-execute mode. Nothing calls a model until the GM requests a
 proposal or explicitly enables turn prompts.
 
@@ -69,7 +72,17 @@ proposal. A second tab's request cannot approve the first tab's stored object.
 
 ## Supported subset
 
-- Equidistant square grids; all tokens are size 1, snapped, at equal elevation.
+- Equidistant square grids and Foundry's odd/even row/column hex layouts.
+- All actors are Size ½ or 1 and every token occupies exactly one Foundry grid
+  cell, at equal elevation. Size ½ tokens may be 0.5×0.5 or 1×1; Size 1 tokens
+  must be 1×1. Larger/irregular footprints remain manual, including bystanders.
+- Token documents must already be snapped. Planning never resizes or moves
+  them. Small tokens retain their position within a cell; their containing cell
+  is conservatively occupied for movement. Their actual centers are used for LOS.
+- Hex row/column counts come from Foundry offset ranges, rather than dividing
+  pixel dimensions by grid size. Candidates whose full pixel bounds extend
+  outside the scene are omitted. Rounded token positions allow at most 0.51px
+  of snapping error, matching Foundry's integer-pixel commits.
 - NPC Speed is an integer from 0 to 12. All scene tokens need supported Lancer
   actors, including hidden enemies; player clients receive no planning API.
 - Fresh NPC turns only; partial movement/action budgets require manual play.
@@ -87,7 +100,7 @@ proposal. A second tab's request cannot approve the first tab's stored object.
   to a visible enemy of equal or greater Size; an already-engaged NPC must
   move manually. This deliberately restricts movement rather than approximating
   Disengage. Hidden enemies do not cause engagement.
-- Region movement rules, hex grids, large tokens, different elevations, Hide,
+- Region movement rules, large tokens, different elevations, Hide,
   tech attacks, reactions and complex feature activations require manual play.
 
 This is intentionally narrower than the pure core and design. The inherited
@@ -130,7 +143,8 @@ tabs in that browser; it is not a distributed lock between different browsers.
 A persistent actor turn reservation prevents ordinary reload/replay. Use one GM
 execution browser; do not run the same GM user simultaneously in other browsers.
 
-The executor reserves the turn, moves through approved waypoints (splitting
+The executor validates the stored token-specific pixel waypoints before reserving
+the turn, then moves through approved waypoints (splitting
 Boost after the ordinary movement budget), checks the actual final position and
 unchanged board, updates Lancer's action tracker, selects targets and calls
 `item.beginWeaponAttackFlow()`. The Lancer HUD owns all rolls and later outcome
@@ -150,8 +164,16 @@ await canvas.tokens.controlled[0].actor.unsetFlag('lancer-npc-pilot', 'lastExecu
 
 ## Evidence and acceptance gates
 
-Read-only metadata checked on 2026-11-01: lab Foundry 13.351, Lancer 3.1.3,
-no active world. Local source maps from that Lancer version confirm
+Lab checks on 2026-11-01 found Foundry 13.351 and Lancer 3.1.3. Initial 0.2.0
+acceptance observed real gpt-oss:20b proposals, Skip, terrain review and an explicitly
+approved staged Boost with action spending. Execution was disabled afterwards.
+The later `lancerworldv1-npc-pilot-test` copy retains the campaign's maps, tokens,
+seven world compendiums and visual modules; outbound NHP Uplink is disabled.
+The original campaign's 152 files were hash-verified unchanged after copying.
+All three populated battle scenes use hex grids; the active map includes Size ½
+pilots/deployables alongside Size 1 mechs/NPCs. This motivates the 0.3.0 change;
+it does not establish live movement or weapon acceptance for that version.
+Local source maps from that Lancer version confirm
 `currentProfile()`, `tag.lid`, `system.action_tracker` and
 `beginWeaponAttackFlow()`. Foundry's installed source confirms
 `TokenDocument.move(waypoints, options)` and `_movementHistory` updates.
@@ -161,7 +183,18 @@ API references: [v13 grids](https://foundryvtt.com/api/v13/classes/foundry.grid.
 [movement](https://foundryvtt.com/api/v13/classes/foundry.documents.TokenDocument.html#move),
 [DialogV2](https://foundryvtt.com/api/v13/classes/foundry.applications.api.DialogV2.html).
 
-Local checks use `node --test` and `node --check` on module files. Fixtures and
+Local checks use `node --test` and `node --check` on module files. An optional
+conformance check uses the licensed installed Foundry classes without copying
+them into this repository:
+
+```powershell
+$env:PILOT_FOUNDRY_CODE = 'G:/Programs/FoundryVTT_v13/FoundryVTT-Node-13.351/code'
+node --test foundry-module/test/foundry-runtime.test.mjs
+```
+
+This compares all four hex layouts and squares across positive/negative offsets
+and Size ½/1 token pixel waypoints. It is skipped when the environment variable
+is absent. Fixtures and
 mocked Foundry documents do not prove browser, live system or model acceptance.
 Before using execution in a campaign, verify in a disposable staged scene:
 
@@ -178,5 +211,6 @@ Before using execution in a campaign, verify in a disposable staged scene:
 - [ ] Boost boundaries, Lancer attack HUD, target selection, action spending,
   reactions and damage handoff, including coexistence with NHP Uplink.
 
-These boxes remain open until individually observed. No deployment, live model
-call, paid inference or campaign modification was performed by this task.
+These broad boxes remain open until every listed subcheck is individually
+observed. The earlier square-scene observations are scoped evidence, not complete
+acceptance. No paid inference has been used; campaign execution remains disabled.

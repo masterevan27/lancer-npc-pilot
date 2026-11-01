@@ -18,6 +18,17 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     const item = kind === 'attack' ? actor.items.get(option.action.itemId) : null;
     if (kind === 'attack' && typeof item?.beginWeaponAttackFlow !== 'function') throw Error('The selected Lancer weapon flow is unavailable.');
     if (option.move && typeof token.document.move !== 'function') throw Error('Foundry v13 movement API is unavailable.');
+    const mover = board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId);
+    const positionFor = c => {
+      const p = board.positions?.[`${c.x},${c.y}`];
+      if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y)) throw Error('Approved token waypoint geometry is unavailable. Re-plan.');
+      return { x: p.x, y: p.y };
+    };
+    const route = option.move?.path ?? [mover.pos];
+    const approvedPoints = route.map(positionFor);
+    const finalPosition = positionFor(option.move?.to ?? mover.pos);
+    if (token.document.x !== approvedPoints[0].x || token.document.y !== approvedPoints[0].y)
+      throw Error('The NPC is no longer at the approved starting position. Re-plan.');
     const tracker = structuredClone(actor.system.action_tracker);
     let expectedPosition = { x: token.document.x, y: token.document.y };
     // Persistent reservation survives reloads. No automatic retry after a partial
@@ -34,8 +45,7 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     };
     checkBoard();
     if (option.move) {
-      const mover = board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId);
-      const points = option.move.path.slice(1).map(c => canvas.grid.getTopLeftPoint({ i: c.y, j: c.x }));
+      const points = approvedPoints.slice(1);
       const difficult = new Set(board.snapshot.difficult ?? []);
       let cost = 0, split = points.length;
       for (let i = 1; i < option.move.path.length; i++) {
@@ -57,9 +67,7 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     const current = checkBoard();
     if (kind === 'attack') {
       const targets = option.action.targetTokenIds;
-      const position = canvas.grid.getTopLeftPoint(option.move ? { i: option.move.to.y, j: option.move.to.x }
-        : { i: board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId).pos.y,
-          j: board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId).pos.x });
+      const position = finalPosition;
       if (token.document.x !== position.x || token.document.y !== position.y) throw Error('The NPC is no longer at the approved position.');
       const cell = option.move?.to ?? board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId).pos;
       if (!targets?.length || targets.some(id => !current.snapshot.tokens.some(t => t.id === id && t.hp[0] > 0 && !t.defeated)

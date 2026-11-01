@@ -7,13 +7,14 @@ Anthropic API or a local model through Ollama, picks one in character. The GM
 approves it, and Foundry and the Lancer system roll the dice.
 
 <!-- doc-media TODO: purpose: show the GM review dialog on a live NPC turn;
-acceptance: sanitized real screenshot from a staged lab NPC turn at version 0.2.0;
-blocker: lab Foundry has no active world and this branch is not deployed. -->
+acceptance: sanitized real screenshot from a staged hex NPC turn at version 0.3.0;
+blocker: hex-grid source has not yet completed live acceptance; existing 0.2.0 capture does not demonstrate hex planning. -->
 
-Status: 0.2.0 development branch. The relay, pure core and GM review module are
-implemented and tested locally; live acceptance is still pending. Execution and
-automatic turn prompts default off. The first adapter supports fresh NPC turns
-on flat, size-1, equidistant square-grid scenes. See the
+Status: 0.3.0 development branch. The relay, pure core and GM review module are
+implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
+square scene. Full live acceptance is still pending. Execution and automatic turn
+prompts default off. The adapter supports fresh NPC turns on flat equidistant
+square grids and all four offset hex layouts, with single-cell Size ½/1 tokens. See the
 [adapter setup and acceptance checklist](docs/foundry-adapter.md) and [design](docs/design.md).
 
 | Part | Folder | Runs on |

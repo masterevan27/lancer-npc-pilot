@@ -12,6 +12,7 @@ function setup({ interrupted = false, changed = false } = {}) {
     move: async path => { calls.push(['move', path]); if (!interrupted) { token.document.x = path.at(-1).x; token.document.y = path.at(-1).y; } return true; } },
     checkCollision: () => false };
   const board = { turn: 't1', stamp: 'a', guard: 'stable', terrainReviewed: true,
+    positions: { '0,0': { x: 0, y: 0 }, '1,0': { x: 100, y: 0 } },
     snapshot: { activeTokenId: 'npc', tokens: [{ id: 'npc', speed: 3, pos: { x: 0, y: 0 } }, { id: 'pc', hp: [5, 5], pos: { x: 3, y: 0 } }],
       losFrom: { '1,0': { pc: true } } } };
   let reads = 0;
@@ -76,5 +77,21 @@ test('moving the active NPC during budget, chat or target awaits cannot bypass t
     if (stage === 'targets') s.env.game.user.updateTokenTargets = move;
     await assert.rejects(executeOption(s.option, s.board, { line: 'Advance' }, s.env));
     assert(!s.calls.some(c => c[0] === 'flow'));
+  }
+});
+
+test('executor uses serialized token-specific pixel waypoints instead of grid top-left corners', async () => {
+  const s = setup();
+  s.token.document.x = 25; s.token.document.y = 25;
+  s.board.positions = { '0,0': { x: 25, y: 25 }, '1,0': { x: 125, y: 25 } };
+  await executeOption(s.option, s.board, {}, s.env);
+  assert.deepEqual(s.calls.find(c => c[0] === 'move')[1], [{ x: 125, y: 25 }]);
+});
+
+test('missing or nonfinite approved waypoint geometry is refused before reservation or movement', async () => {
+  for (const point of [undefined, { x: NaN, y: 0 }, { x: 100, y: Infinity }]) {
+    const s = setup(); s.board.positions['1,0'] = point;
+    await assert.rejects(executeOption(s.option, s.board, {}, s.env));
+    assert.equal(s.calls.length, 0);
   }
 });

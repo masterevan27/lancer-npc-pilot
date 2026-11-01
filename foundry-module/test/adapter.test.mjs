@@ -28,7 +28,18 @@ export function environment() {
     toObject() { return { flags: this.flags }; } };
   const grid = { getOffset: ({ x, y }) => ({ i: Math.floor(y / 100), j: Math.floor(x / 100) }),
     getTopLeftPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }),
-    getCenterPoint: ({ i, j }) => ({ x: j * 100 + 50, y: i * 100 + 50 }) };
+    getCenterPoint: ({ i, j }) => ({ x: j * 100 + 50, y: i * 100 + 50 }),
+    getOffsetRange: ({ x, y, width, height }) => [Math.floor(y / 100), Math.floor(x / 100), Math.ceil((y + height) / 100), Math.ceil((x + width) / 100)] };
+  for (const t of tokens) {
+    const d = t.document;
+    d.getSize = () => ({ width: d.width * 100, height: d.height * 100 });
+    d.getCenterPoint = (p = {}) => ({ x: (p.x ?? d.x) + d.width * 50, y: (p.y ?? d.y) + d.height * 50 });
+    d.getOccupiedGridSpaceOffsets = (p = {}) => [grid.getOffset(d.getCenterPoint(p))];
+    d.getSnappedPosition = (p = {}) => {
+      const step = d.width === 0.5 ? 25 : 100;
+      return { x: Math.round((p.x ?? d.x) / step) * step, y: Math.round((p.y ?? d.y) / step) * step };
+    };
+  }
   const combat = { id: 'combat', round: 1, turn: 0, started: true, scene: { id: 'scene' },
     combatant: { tokenId: 'npc', defeated: false }, combatants: [],
     toObject() { return { id: this.id, turn: this.turn, round: this.round }; } };
