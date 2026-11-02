@@ -10,7 +10,8 @@ approves it, and Foundry and the Lancer system roll the dice.
 acceptance: sanitized real screenshot from a staged hex NPC turn at version 0.3.0;
 blocker: hex-grid source has not yet completed live acceptance; existing 0.2.0 capture does not demonstrate hex planning. -->
 
-Status: 0.4.0 development source; latest published release is 0.3.1. The relay, pure core and GM review module are
+Status: 0.4.1 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
+The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
 prompts default off. The adapter supports fresh NPC turns on flat equidistant
