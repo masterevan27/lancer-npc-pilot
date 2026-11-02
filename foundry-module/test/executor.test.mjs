@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { executeOption } from '../scripts/adapter/executor.mjs';
+import fs from 'node:fs';
 
 function setup({ interrupted = false, changed = false } = {}) {
   const calls = [];
@@ -91,6 +92,55 @@ test('executor uses serialized token-specific pixel waypoints instead of grid to
 test('missing or nonfinite approved waypoint geometry is refused before reservation or movement', async () => {
   for (const point of [undefined, { x: NaN, y: 0 }, { x: 100, y: Infinity }]) {
     const s = setup(); s.board.positions['1,0'] = point;
+    await assert.rejects(executeOption(s.option, s.board, {}, s.env));
+    assert.equal(s.calls.length, 0);
+  }
+});
+
+function modeSetup(mode) {
+  const s = setup();
+  const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/ram-cannon.json', import.meta.url)));
+  const item = { id: 'gun', ...fixture, beginWeaponAttackFlow: () => assert.fail('Must use explicit mode flow'),
+    currentProfile() { return { range: this.system.range, damage: this.system.damage[0], accuracy: 1, attack: 0 }; } };
+  s.token.actor.system.tier = 1;
+  s.token.actor.items = [item]; s.token.actor.items.get = () => item;
+  s.option.action.mode = mode;
+  const normalInit = async state => { state.data = { attack_type: 'Ranged', acc_diff: { weapon: { melee: true } } }; return true; };
+  class WeaponAttackFlow {
+    static steps = ['initAttackData', 'checks', 'showAttackHUD', 'rollAttacks'];
+    constructor(weapon) { assert.equal(weapon, item); this.state = { item: weapon }; }
+    getStep(name) { return name === 'initAttackData' ? normalInit : async () => true; }
+    async begin() {
+      await this.getStep('initAttackData')(this.state);
+      s.calls.push(['mode-flow', structuredClone(this.state.data)]);
+    }
+  }
+  s.env.game.system = { id: 'lancer', version: '3.1.3' };
+  s.env.game.lancer = { flows: new Map([['WeaponAttackFlow', WeaponAttackFlow]]) };
+  return { ...s, item, WeaponAttackFlow };
+}
+
+test('approved Ram Cannon handoff initializes native flow and applies only its selected mode', async () => {
+  for (const mode of ['melee', 'ranged']) {
+    const s = modeSetup(mode), before = JSON.stringify(s.item);
+    const steps = [...s.WeaponAttackFlow.steps], init = s.WeaponAttackFlow.prototype.getStep;
+    await executeOption(s.option, s.board, {}, s.env);
+    const data = s.calls.find(c => c[0] === 'mode-flow')?.[1];
+    assert(data, 'selected mode must reach the Lancer flow');
+    assert.equal(data.attack_type, mode === 'melee' ? 'Melee' : 'Ranged');
+    assert.equal(data.acc_diff.weapon.melee, mode === 'melee');
+    assert.equal(JSON.stringify(s.item), before);
+    assert.deepEqual(s.WeaponAttackFlow.steps, steps);
+    assert.equal(s.WeaponAttackFlow.prototype.getStep, init);
+  }
+});
+
+test('unsupported mode APIs, versions, tiers or modified items fail before any mutation', async () => {
+  for (const change of [s => { s.env.game.system.version = '9.0.0'; },
+    s => { s.env.game.lancer.flows.clear(); }, s => { s.option.action.mode = 'blast'; },
+    s => { s.item.system.effect += ' push'; }, s => { s.token.actor.system.tier = 2; },
+    s => { s.WeaponAttackFlow.prototype.getStep = undefined; }]) {
+    const s = modeSetup('ranged'); change(s);
     await assert.rejects(executeOption(s.option, s.board, {}, s.env));
     assert.equal(s.calls.length, 0);
   }

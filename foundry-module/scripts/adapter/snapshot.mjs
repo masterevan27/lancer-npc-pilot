@@ -2,11 +2,10 @@ import { cellKey, cellDistance, neighbors } from '../core/grid.mjs';
 import { reachableCells } from '../core/reach.mjs';
 import { normStatus, validateSnapshot } from '../core/snapshot.mjs';
 import { gridInfo, tokenGeometry, insideScene } from './geometry.mjs';
+import { readNpcWeapons } from './weapons.mjs';
 
 export const MODULE_ID = 'lancer-npc-pilot';
 const ACTIVE_STATUSES = new Set(['IMPAIRED', 'IMMOBILIZED', 'SLOWED', 'STUNNED', 'LOCKON', 'SHREDDED', 'EXPOSED']);
-const ORDINARY_TAGS = new Set(['tg_loading', 'tg_limited', 'tg_recharge', 'tg_accurate', 'tg_inaccurate',
-  'tg_reliable', 'tg_ap', 'tg_overkill', 'tg_heat_self']);
 const pair = value => [Number(value?.value), Number(value?.max)];
 const number = value => Number(value);
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -26,29 +25,7 @@ function stripOwnActorChanges(actor) {
 export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
   const d = token.document, actor = token.actor, s = actor.system;
   const position = geometry.cell;
-  const weapons = [];
-  for (const item of actor.items ?? []) {
-    if (item.type !== 'npc_feature' || item.system.type !== 'Weapon') continue;
-    const data = item.system;
-    const tags = (data.tags ?? []).map(t => ({ id: t.lid, val: t.tierVal?.(s.tier) ?? t.val }));
-    const has = id => tags.some(t => t.id === id);
-    // Lancer NPC classifications and scripted effects are not encoded solely
-    // in range/tags (e.g. Superheavy Melee and Wrecker's mandatory multi-target).
-    if (/superheavy/i.test(data.weapon_type ?? '') || String(data.effect ?? '').trim()
-      || String(data.on_hit ?? '').trim() || tags.some(t => !ORDINARY_TAGS.has(t.id))) continue;
-    if (data.destroyed || (has('tg_recharge') && !data.charged)) continue;
-    const p = item.currentProfile();
-    // AoE and special targeting must use manual Lancer flows.
-    if (!p.range?.length || p.range.some(r => !['Range', 'Threat'].includes(r.type))) continue;
-    if (tags.some(t => ['tg_smart', 'tg_seeking', 'tg_arcing', 'tg_ordinance', 'tg_ordnance', 'tg_superheavy'].includes(t.id))) continue;
-    const damage = (p.damage ?? []).map(v => ({ type: v.type, val: v.val }));
-    if (!damage.length || damage.some(v => !/^(?:\d*d\d+(?:[+-]\d+)?|\d+)$/i.test(String(v.val).replace(/\s/g, '')))) continue;
-    weapons.push({ itemId: item.id, name: item.name, type: p.type ?? data.weapon_type,
-      range: p.range.map(r => ({ type: r.type, val: Number(r.val) })), damage,
-      accuracy: number(p.accuracy ?? 0), attackBonus: number(p.attack ?? 0), tags,
-      loaded: !has('tg_loading') || data.loaded === true,
-      uses: has('tg_limited') ? number(data.uses?.value) : null, destroyed: false });
-  }
+  const { weapons, excludedWeapons } = readNpcWeapons(actor);
   return { id: token.id, actorId: actor.id, name: token.name ?? d.name,
     isNpc: actor.type === 'npc', side: d.disposition < 0 ? 'hostile' : d.disposition > 0 ? 'friendly' : 'neutral',
     pos: position, size: number(s.size ?? d.width), hp: pair(s.hp),
@@ -57,7 +34,7 @@ export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
     armor: number(s.armor), evasion: number(s.evasion), edef: number(s.edef), speed: number(s.speed),
     sensors: number(s.sensor_range), statuses: [...(actor.statuses ?? [])],
     resistances: Object.entries(s.resistances ?? {}).filter(([, v]) => v === true).map(([k]) => k),
-    weapons, persona: String(actor.getFlag?.(MODULE_ID, 'persona') ?? '').slice(0, 2000),
+    weapons, excludedWeapons, persona: String(actor.getFlag?.(MODULE_ID, 'persona') ?? '').slice(0, 2000),
     defeated: Boolean(s.destroyed) };
 }
 
@@ -65,7 +42,11 @@ export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
 export function extractSnapshot({ game, canvas, constants }, { expectedTracker } = {}) {
   if (!game.user?.isGM || game.system?.id !== 'lancer') throw Error('Lancer NPC Pilot requires a Lancer GM client.');
   const combat = game.combat, scene = canvas.scene;
-  if (!canvas.ready || !combat?.started || combat.scene?.id !== scene?.id) throw Error('View the active combat scene first.');
+  if (!canvas.ready || !scene) throw Error('The scene is not ready. Open the encounter map and wait for the scene to finish loading, then retry Plan Turn.');
+  if (!combat) throw Error('No active combat encounter. Open Combat Tracker, choose or Create Encounter, and add the NPC before planning.');
+  if (!combat.started) throw Error('Combat has not started. Click Begin Combat in Combat Tracker, start the NPC turn, then retry Plan Turn.');
+  if (!combat.scene?.id) throw Error('This encounter is not linked to a scene. Open its map, then choose Combat Tracker > three-dot menu > Link to Viewed Scene. Retry Plan Turn.');
+  if (combat.scene.id !== scene.id) throw Error('You are viewing a different scene. Open the encounter\'s linked scene, then retry Plan Turn.');
   const active = canvas.tokens.get(combat.combatant?.tokenId);
   if (!active || active.actor?.type !== 'npc' || combat.combatant.defeated) throw Error('The active combatant must be a living NPC.');
   if (active.document.disposition === 0) throw Error('Set the NPC disposition to friendly or hostile first.');
@@ -152,7 +133,9 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     stamp: JSON.stringify({ scene: scene.toObject(), combat: combat.toObject(),
       tokens: tokens.map(t => ({ token: t.document.toObject(), actor: t.actor.toObject() })), snapshot }),
     terrainReviewed: terrain.reviewed === true,
-    warnings: ['Scoring approximates cover, engagement and special traits; verify the Lancer attack HUD.',
+    warnings: [...mover.excludedWeapons.map(w => `${w.name}: ${w.reason}`),
+      ...(!mover.weapons.length ? ['This NPC has no usable supported weapons. Attacks are unavailable; play excluded weapons manually.'] : []),
+      'Scoring approximates cover, engagement and special traits; verify the Lancer attack HUD.',
       'Resolve reactions manually along the proposed path. Hide and special targeting are excluded.',
       ...(validation.warnings ?? []).map(w => `${w.path}: ${w.message}`), ...(!terrain.reviewed ? ['Scene terrain has not been reviewed; execution is disabled.'] : [])] };
 }

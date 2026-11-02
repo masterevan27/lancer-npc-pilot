@@ -32,6 +32,7 @@ import { HEX_LAYOUTS, SQUARE_DIAGONALS, parseKey } from './grid.mjs';
  * @property {string} itemId
  * @property {string} name
  * @property {string} [type]          "Rifle", "Melee", "Main Cannon", ...
+ * @property {'melee'|'ranged'} [mode] Explicit reviewed mode; shares its source item ID.
  * @property {RangeEntry[]} range
  * @property {string|DamageEntry[]} damage  "1d6+2 Kinetic" or [{type, val}].
  * @property {number} [accuracy]      Net accuracy: positive = accuracy, negative = difficulty (tier already resolved).

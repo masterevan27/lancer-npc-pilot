@@ -45,6 +45,19 @@ dice.
 | `options.mjs` | `generateOptions(snap, {maxOptions, weights})`, `DEFAULT_WEIGHTS` |
 | `prompt.mjs` | `buildPrompt(snap, options, {persona, role})`, `describeOption(opt)` |
 | `reply.mjs` | `interpretReply(text, options, {attempt})`, `retryMessage(error, options)` |
+| `abilities.mjs` | Data-only `validateDescriptor`, `resolveAbility`, `auditCoverage` foundation; not yet connected to executable special abilities |
+
+Reviewed alternate weapon modes carry an optional `weapon.mode` and matching
+`action.mode` (`melee` or `ranged`). They retain the actual item ID but have
+separate candidate identities, names and range lists. A melee choice must not
+inherit a ranged choice's range or cover/engagement scoring. The adapter supplies
+these modes only for explicitly reviewed mechanics.
+
+Ability coverage checks require exact source fingerprints, runtime version,
+tiers and an explicit handler allowlist. A catalogue entry or a `supported`
+data result alone never authorizes execution. The full NPC coverage work still
+needs reviewed handlers, targeting, budgets, sequences, effects and reaction
+integration; see the [implementation plan](../../../docs/superpowers/plans/2026-11-01-full-npc-coverage.md).
 
 ## Snapshot contract (for the adapter author)
 

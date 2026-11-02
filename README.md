@@ -10,11 +10,14 @@ approves it, and Foundry and the Lancer system roll the dice.
 acceptance: sanitized real screenshot from a staged hex NPC turn at version 0.3.0;
 blocker: hex-grid source has not yet completed live acceptance; existing 0.2.0 capture does not demonstrate hex planning. -->
 
-Status: 0.3.1 released. The relay, pure core and GM review module are
+Status: 0.4.0 development source; latest published release is 0.3.1. The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
 prompts default off. The adapter supports fresh NPC turns on flat equidistant
-square grids and all four offset hex layouts, with single-cell Size ½/1 tokens. See the
+square grids and all four offset hex layouts, with single-cell Size ½/1 tokens.
+Development 0.4.0 adds excluded-weapon diagnostics and reviewed T1 Ram Cannon
+melee/ranged choices. Full NPC special-ability coverage is still being built;
+see its [implementation plan](docs/superpowers/plans/2026-11-01-full-npc-coverage.md). See the
 [adapter setup and acceptance checklist](docs/foundry-adapter.md) and [design](docs/design.md).
 
 | Part | Folder | Runs on |

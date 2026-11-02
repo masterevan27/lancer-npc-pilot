@@ -1,4 +1,5 @@
 import { MODULE_ID } from './snapshot.mjs';
+import { prepareModeFlow } from './weapon-flow.mjs';
 
 export function isResponsibleGM(game) {
   return game.user?.isGM === true && game.users.activeGM?.id === game.user.id;
@@ -17,6 +18,8 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (!['attack', 'boost', 'retreat', 'hold'].includes(kind)) throw Error('Unsupported action.');
     const item = kind === 'attack' ? actor.items.get(option.action.itemId) : null;
     if (kind === 'attack' && typeof item?.beginWeaponAttackFlow !== 'function') throw Error('The selected Lancer weapon flow is unavailable.');
+    const modeFlow = kind === 'attack' && option.action.mode
+      ? prepareModeFlow(item, actor, option.action.mode, game) : null;
     if (option.move && typeof token.document.move !== 'function') throw Error('Foundry v13 movement API is unavailable.');
     const mover = board.snapshot.tokens.find(t => t.id === board.snapshot.activeTokenId);
     const positionFor = c => {
@@ -88,7 +91,8 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (kind === 'attack') {
       await game.user.updateTokenTargets(option.action.targetTokenIds);
       checkBoard();
-      await item.beginWeaponAttackFlow();
+      if (modeFlow) await modeFlow.begin();
+      else await item.beginWeaponAttackFlow();
       return { status: 'handed-to-lancer' };
     }
     return { status: kind === 'hold' ? 'held' : 'moved' };

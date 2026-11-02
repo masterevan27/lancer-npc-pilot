@@ -43,6 +43,17 @@ character. The model never rolls dice or decides outcomes; Foundry does.
 - Reinforcement learning or any training.
 - A full LANCER rules engine. Use Foundry and the Lancer system for mechanics.
 
+## Expanded NPC scope (2026-11-01)
+
+The owner subsequently requested support for all installed NPC classes and their
+full special abilities, including area attacks, multi-attacks, tech attacks and
+reactions. The earlier v1 exclusions above describe the original milestone and
+are superseded for this new work. The [full coverage plan](superpowers/plans/2026-11-01-full-npc-coverage.md)
+defines the implementation chunks and acceptance gates. Current source still
+has the adapter restrictions documented in the setup guide; catalogue inventory
+and native effect cards do not establish support. The anti-goals below continue
+to apply.
+
 ## Anti-goals (a failure even if it "works")
 
 - The AI rolls, fabricates or narrates results that Foundry didn't produce.

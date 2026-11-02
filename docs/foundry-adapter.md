@@ -13,6 +13,10 @@ sources:
     resource: ../foundry-module/scripts/pilot.mjs
   - id: snapshot
     resource: ../foundry-module/scripts/adapter/snapshot.mjs
+  - id: weapons
+    resource: ../foundry-module/scripts/adapter/weapons.mjs
+  - id: weapon-flow
+    resource: ../foundry-module/scripts/adapter/weapon-flow.mjs
   - id: executor
     resource: ../foundry-module/scripts/adapter/executor.mjs
   - id: geometry
@@ -23,7 +27,7 @@ sources:
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-02T01:46:36Z
+  at: 2026-11-02T03:18:00Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -85,6 +89,23 @@ only opens planning/review on Foundry's active GM client. It never auto-approves
 If the combat changes while a dialog is open, discard it and request a new
 proposal. A second tab's request cannot approve the first tab's stored object.
 
+## Troubleshooting Plan Turn
+
+Development 0.4.0 retains the actionable scene messages originally prepared
+for the unreleased 0.3.2 source:
+
+- **Scene not ready:** open the encounter map and wait for it to finish loading.
+- **No active combat encounter:** choose or create an encounter in Combat Tracker
+  and add the NPC.
+- **Combat not started:** click **Begin Combat**, then start the NPC's turn.
+- **Encounter not linked:** open its map, then choose **Combat Tracker →
+  three-dot menu → Link to Viewed Scene**. A running encounter can still be
+  unlinked; starting it again does not create a scene link.
+- **Different scene:** open the encounter's linked scene before planning.
+
+Retry **Plan Turn** after resolving the named issue. These checks never move
+tokens, start combat or link a scene automatically.
+
 ## Supported subset
 
 - Equidistant square grids and Foundry's odd/even row/column hex layouts.
@@ -102,11 +123,19 @@ proposal. A second tab's request cannot approve the first tab's stored object.
   actors, including hidden enemies; player clients receive no planning API.
 - Fresh NPC turns only; partial movement/action budgets require manual play.
 - Ordinary single-target Range/Threat weapons, move, Boost/retreat and hold.
-  Weapons with scripted effect/on-hit text, unknown tags, special area targeting,
+  Development 0.4.0 adds separate melee (Threat 2) and ranged (Range 5) modes
+  for the reviewed, unmodified T1 Cataphract Ram Cannon on Lancer 3.1.3. The
+  approved mode is applied to that native attack flow instance; weapon documents
+  and shared flow definitions are unchanged. T2–3 multiple attacks, tier overrides
+  and modified/unknown mixed-mode weapons still require manual play.
+  Other weapons with scripted effect/on-hit text, unknown tags, special area targeting,
   Smart, Seeking, Arcing, Ordnance or Superheavy classification are omitted.
   Allowed tags are Loading, Limited, Recharge, Accurate, Inaccurate, Reliable,
   AP, Overkill and self-heat. Unloaded, destroyed, spent Limited and uncharged Recharge
   weapons are unavailable. The live system resolves the actor tier.
+  Each excluded NPC weapon is named with its reason in the proposal warnings.
+  A separate warning explains when no usable supported weapon remains; movement
+  choices do not establish that the NPC has no weapons.
 - Stunned, Immobilized, Slowed and Impaired are represented by the inherited
   core. Other active NPC conditions that may affect movement/actions are refused.
 - Walls are checked in each direction using Foundry collision APIs. Missing or
@@ -229,3 +258,24 @@ Before using execution in a campaign, verify in a disposable staged scene:
 These broad boxes remain open until every listed subcheck is individually
 observed. The earlier square-scene observations are scoped evidence, not complete
 acceptance. No paid inference has been used; campaign execution remains disabled.
+
+## Full NPC coverage work
+
+The owner requested full special-ability support across NPC classes on 2026-11-01.
+That work is planned in the [full coverage plan](superpowers/plans/2026-11-01-full-npc-coverage.md);
+the current adapter does not yet provide it. The local catalogue audit contains
+44 classes (including drones/deployables), 15 templates and 461 features. This is
+an inventory of the installed pack, not every published or homebrew NPC and not
+a passing execution matrix. Area attacks, tech, special effects, passive/template
+modifiers, reactions and larger footprints still have the manual restrictions
+listed above. Lancer system flows do not resolve all of those rules automatically.
+
+Run a read-only inventory with explicit local paths:
+
+```powershell
+node tools/audit-npc-catalog.mjs --pack <npc-items-directory> --foundry-code-root <Foundry-code-directory>
+```
+
+The audit opens a disposable copy of the pack, reports class/feature crosslinks
+and mechanics signals, and omits raw ability prose and world/document IDs. Its
+results describe coverage work remaining, not permission to execute an ability.

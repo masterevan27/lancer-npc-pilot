@@ -62,7 +62,7 @@ const CATEGORY = { attack: 'aggressive', boost: 'reposition', retreat: 'defensiv
  * @typedef {object} TurnOption
  * @property {string} id                 "A", "B", ...
  * @property {{to:{x:number,y:number}, path:{x:number,y:number}[], cost:number}|null} move  null = stays put.
- * @property {{kind:'attack'|'boost'|'retreat'|'hide'|'hold', itemId?:string, targetTokenIds?:string[]}} action
+ * @property {{kind:'attack'|'boost'|'retreat'|'hide'|'hold', itemId?:string, mode?:'melee'|'ranged', targetTokenIds?:string[]}} action
  * @property {number} score
  * @property {'aggressive'|'defensive'|'reposition'} category
  * @property {object} facts              Numbers (and display names) for the prompt and the UI.
@@ -197,9 +197,9 @@ export function generateCandidates(snap, opts = {}) {
           + w.moveCost * r.cost
           + (heat.overheats ? w.overheat : 0);
         keep({
-          key: `attack:${wpn.itemId}:${tgt.id}`,
+          key: `attack:${wpn.itemId}${wpn.mode ? `:${wpn.mode}` : ''}:${tgt.id}`,
           move: toMove(r),
-          action: { kind: 'attack', itemId: wpn.itemId, targetTokenIds: [tgt.id] },
+          action: { kind: 'attack', itemId: wpn.itemId, ...(wpn.mode ? { mode: wpn.mode } : {}), targetTokenIds: [tgt.id] },
           score,
           facts: {
             weaponName: wpn.name, targetName: tgt.name, melee,

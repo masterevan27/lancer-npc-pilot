@@ -80,6 +80,27 @@ test('snapshot stamp changes for world, walls, actor or turn changes', () => {
   assert.notEqual(extractSnapshot(env).stamp, b);
 });
 
+for (const { name, change, issue, remedy } of [
+  { name: 'loading canvas', change: e => { e.canvas.ready = false; }, issue: /scene.*not ready/i, remedy: /wait.*load/i },
+  { name: 'no viewed scene', change: e => { e.canvas.scene = null; }, issue: /scene.*not ready/i, remedy: /open.*scene/i },
+  { name: 'no encounter', change: e => { e.game.combat = null; }, issue: /no.*combat encounter/i, remedy: /Create Encounter/ },
+  { name: 'unstarted encounter', change: e => { e.game.combat.started = false; }, issue: /combat.*not started/i, remedy: /Begin Combat/ },
+  { name: 'unlinked encounter', change: e => { e.game.combat.scene = null; }, issue: /encounter.*not linked/i, remedy: /Link to Viewed Scene/ },
+  { name: 'different scene', change: e => { e.game.combat.scene = { id: 'other' }; }, issue: /different scene/i, remedy: /open.*linked scene/i },
+]) {
+  test(`planning explains ${name} without reading tokens or changing combat`, () => {
+    const env = environment(); change(env);
+    const before = JSON.stringify(env.game.combat);
+    env.canvas.tokens.get = () => { throw Error('Token lookup must not happen before preconditions pass'); };
+    assert.throws(() => extractSnapshot(env), error => {
+      assert.match(error.message, issue);
+      assert.match(error.message, remedy);
+      return true;
+    });
+    assert.equal(JSON.stringify(env.game.combat), before);
+  });
+}
+
 test('adapter refuses players, wrong turns, unsupported grids, size, statuses and elevation', () => {
   for (const mutate of [
     e => { e.game.user.isGM = false; }, e => { e.game.combat.combatant.tokenId = 'pc'; },
