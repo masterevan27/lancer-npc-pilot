@@ -23,7 +23,7 @@ sources:
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-02T01:25:00Z
+  at: 2026-11-02T01:46:36Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -36,7 +36,7 @@ proposal or explicitly enables turn prompts.
 
 ## Install for a staged scene
 
-1. After the first public release, use Foundry **Setup → Add-on Modules →
+1. Use Foundry **Setup → Add-on Modules →
    Install Module → Manifest URL** with:
 
    ```text
@@ -44,8 +44,8 @@ proposal or explicitly enables turn prompts.
    ```
 
    Later published versions are available through **Check Update / Update All**.
-   The URL will not work until release assets are published and publicly accessible.
-   For local staging before publication, copy the **contents** of `foundry-module/`
+   The public 0.3.1 manifest and ZIP are available at this URL.
+   For local staging from source, copy the **contents** of `foundry-module/`
    into a Foundry user-data module directory named `lancer-npc-pilot`, with
    `module.json` at its root, or extract the locally built release ZIP there.
    See [versioning and releases](VERSIONING.md). Module updates do not update or
