@@ -17,18 +17,26 @@ function fixture(t) {
   }
   return dir;
 }
-function build(dir, tag) {
+function build(dir, tag, driveAlias = false) {
+  if (driveAlias) {
+    return spawnSync(shell, ['-NoProfile', '-Command',
+      "New-PSDrive -Name PilotRelease -PSProvider FileSystem -Root $env:PILOT_BUILD_ROOT | Out-Null; & $env:PILOT_BUILD_SCRIPT -ProjectRoot 'PilotRelease:\\' -Tag $env:PILOT_BUILD_TAG"], {
+      encoding: 'utf8',
+      env: { ...process.env, PILOT_BUILD_ROOT: dir, PILOT_BUILD_SCRIPT: join(root, 'tools/build-release.ps1'), PILOT_BUILD_TAG: tag }
+    });
+  }
   return spawnSync(shell, ['-NoProfile', '-File', join(root, 'tools/build-release.ps1'),
     '-ProjectRoot', dir, '-Tag', tag], { encoding: 'utf8' });
 }
 
-test('release ZIP installs from its root and excludes relay, tests and local configuration', { skip: !available }, t => {
+for (const driveAlias of [false, true]) {
+test(`release ZIP installs from its root and excludes local files (${driveAlias ? 'drive alias' : 'native path'})`, { skip: !available }, t => {
   const dir = fixture(t);
   const version = readFileSync(join(dir, 'VERSION'), 'utf8').trim();
   mkdirSync(join(dir, 'relay'));
   writeFileSync(join(dir, 'relay/.env'), 'TEST_ONLY_SENTINEL');
   writeFileSync(join(dir, 'foundry-module/scripts/local.env'), 'TEST_ONLY_SENTINEL');
-  const result = build(dir, `v${version}`);
+  const result = build(dir, `v${version}`, driveAlias);
   assert.equal(result.status, 0, result.stdout + result.stderr);
   const unpack = spawnSync(shell, ['-NoProfile', '-Command',
     "Expand-Archive -LiteralPath $env:PILOT_TEST_ZIP -DestinationPath $env:PILOT_TEST_OUT"], {
@@ -49,6 +57,7 @@ test('release ZIP installs from its root and excludes relay, tests and local con
     assert.equal(existsSync(join(dir, 'unpacked', path)), false, path);
   }
 });
+}
 
 test('wrong release tag fails before producing artifacts', { skip: !available }, t => {
   const dir = fixture(t);

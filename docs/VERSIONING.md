@@ -9,8 +9,9 @@ its `module.json` `version` must equal `VERSION`.
 
 Release packaging uses PowerShell 5.1 or newer (PowerShell 7 `pwsh` also works)
 and Node for tests; no npm dependencies are needed. The release workflow runs
-on GitHub's Windows runner. The initial release is 0.3.0; packaging alone does
-not change gameplay behavior or close its staged acceptance gates.
+on GitHub's Windows runner. Version 0.3.1 fixes Windows release packaging after
+the failed v0.3.0 workflow; it does not change gameplay behavior or close its
+staged acceptance gates.
 
 1. Set `VERSION`, `package.json` and `foundry-module/module.json` to the same
    version. Update the manifest's `download` URL to the matching `vX.Y.Z` ZIP.
@@ -18,7 +19,7 @@ not change gameplay behavior or close its staged acceptance gates.
 2. Run `node --test`, then build locally from the repository root:
 
    ```powershell
-   ./tools/build-release.ps1 -Tag v0.3.0
+   ./tools/build-release.ps1 -Tag v0.3.1
    ```
 
    Substitute the intended version for later releases. This produces ignored
@@ -34,8 +35,8 @@ not change gameplay behavior or close its staged acceptance gates.
 4. Tag the intended commit and push that tag, for example:
 
    ```powershell
-   git tag v0.3.0
-   git push origin v0.3.0
+   git tag v0.3.1
+   git push origin v0.3.1
    ```
 
    `.github/workflows/release.yml` runs the tests, validates the tag and packages
@@ -44,6 +45,9 @@ not change gameplay behavior or close its staged acceptance gates.
    model API key is needed. A normal branch push does not publish a release.
    If publication fails, inspect the workflow and release state before retrying;
    an existing release is not overwritten automatically.
+   Rerunning a failed tag workflow uses that tag's original source. If code
+   needs fixing, land the fix and publish a new patch version/tag rather than
+   expecting a rerun of the old tag to pick it up.
 5. Verify both release downloads are accessible while signed out. Install via
    the stable manifest URL in the [adapter guide](foundry-adapter.md), first in
    a disposable test world. Later releases with a higher version appear in

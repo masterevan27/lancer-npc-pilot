@@ -4,7 +4,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
-$ProjectRoot = (Resolve-Path -LiteralPath $ProjectRoot).Path
+# Resolve-Path preserves DOS 8.3 aliases (RUNNER~1 on GitHub Windows), while
+# Get-ChildItem.FullName expands them. Use the same native long-path form before
+# calculating entry names or passing paths to .NET file/ZIP APIs.
+$ProjectRoot = (Get-Item -LiteralPath $ProjectRoot).FullName
 $version = (Get-Content -LiteralPath (Join-Path $ProjectRoot 'VERSION') -Raw).Trim()
 $package = Get-Content -LiteralPath (Join-Path $ProjectRoot 'package.json') -Raw | ConvertFrom-Json
 $moduleRoot = Join-Path $ProjectRoot 'foundry-module'
