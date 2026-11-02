@@ -10,7 +10,7 @@ approves it, and Foundry and the Lancer system roll the dice.
 acceptance: sanitized real screenshot from a staged hex NPC turn at version 0.3.0;
 blocker: hex-grid source has not yet completed live acceptance; existing 0.2.0 capture does not demonstrate hex planning. -->
 
-Status: 0.3.0 development branch. The relay, pure core and GM review module are
+Status: 0.3.0 source implementation, pending public release. The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
 prompts default off. The adapter supports fresh NPC turns on flat equidistant
@@ -24,5 +24,17 @@ square grids and all four offset hex layouts, with single-cell Size ½/1 tokens.
 
 Companion projects: [NHP Uplink](https://github.com/masterevan27/foundryvtt-to-sillytavern-nhp-uplink)
 (narration) and the [Lancer TTRPG GM Hub](https://github.com/masterevan27/Lancer-TTRPG-GM-Hub).
+
+Once the first GitHub release is published and publicly accessible, install via
+Foundry **Setup → Add-on Modules → Install Module → Manifest URL**:
+
+```text
+https://github.com/masterevan27/lancer-npc-pilot/releases/latest/download/module.json
+```
+
+Use Foundry's **Check Update / Update All** for later published releases. The
+relay is installed and updated separately. See [release instructions](docs/VERSIONING.md)
+and the [staged setup guide](docs/foundry-adapter.md). Packaging support does not
+establish live acceptance; use a disposable world first.
 
 License: GPL-3.0-or-later.

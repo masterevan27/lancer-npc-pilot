@@ -1,7 +1,7 @@
 # Lancer NPC Pilot — design
 
 Status: design from 2026-10-31; relay, core and the first Foundry adapter subset
-are implemented on a development branch as of 2026-11-01. Initial 0.2.0 staged
+are implemented in local source as of 2026-11-01. Initial 0.2.0 staged
 square-scene live checks passed; full acceptance remains open. Version 0.3.0 adds
 adapter support for four hex layouts and single-cell Size ½/1 tokens, with local
 Foundry geometry conformance checks. The [adapter guide](foundry-adapter.md) records current restrictions;

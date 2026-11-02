@@ -5,6 +5,10 @@ description: Install and review the first GM-only adapter subset without implyin
 status: draft
 tags: [foundry, operations, testing]
 sources:
+  - id: packaging
+    resource: ../tools/build-release.ps1
+  - id: release-workflow
+    resource: ../.github/workflows/release.yml
   - id: runtime
     resource: ../foundry-module/scripts/pilot.mjs
   - id: snapshot
@@ -19,7 +23,7 @@ sources:
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-01T21:19:50Z
+  at: 2026-11-02T01:25:00Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -32,9 +36,20 @@ proposal or explicitly enables turn prompts.
 
 ## Install for a staged scene
 
-1. Copy the **contents** of `foundry-module/` into a Foundry user-data module
-   directory named `lancer-npc-pilot`. `module.json` must be at its root.
-   This repository does not yet publish an installable manifest or release zip.
+1. After the first public release, use Foundry **Setup → Add-on Modules →
+   Install Module → Manifest URL** with:
+
+   ```text
+   https://github.com/masterevan27/lancer-npc-pilot/releases/latest/download/module.json
+   ```
+
+   Later published versions are available through **Check Update / Update All**.
+   The URL will not work until release assets are published and publicly accessible.
+   For local staging before publication, copy the **contents** of `foundry-module/`
+   into a Foundry user-data module directory named `lancer-npc-pilot`, with
+   `module.json` at its root, or extract the locally built release ZIP there.
+   See [versioning and releases](VERSIONING.md). Module updates do not update or
+   restart the separate relay.
 2. Enable **Lancer NPC Pilot** in a disposable Lancer world. The reference
    environment is Foundry 13.351 with Lancer 3.1.3.
 3. Start the [relay](../relay/README.md) on the GM's PC with a shared secret and

@@ -4,3 +4,4 @@ relay/.env
 secrets/
 .worktrees/
 *.log
+dist/
