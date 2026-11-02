@@ -2,6 +2,8 @@ name: Release Foundry module
 
 on:
   push:
+    branches: ['main']
+    paths: ['VERSION']
     tags: ['v*']
 
 permissions:
@@ -9,6 +11,7 @@ permissions:
 
 concurrency:
   group: release-${{ github.ref }}
+  queue: max
   cancel-in-progress: false
 
 jobs:
@@ -21,22 +24,45 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v6
         with:
           node-version: '24'
       - name: Test
         run: node --test
+      - name: Read release version
+        run: |
+          $version = (Get-Content -LiteralPath VERSION -Raw).Trim()
+          "RELEASE_TAG=v$version" >> $env:GITHUB_ENV
       - name: Package versioned module
         env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: ./tools/build-release.ps1 -Tag $env:RELEASE_TAG
+          SOURCE_REF: ${{ github.ref }}
+          SOURCE_TAG: ${{ github.ref_name }}
+        run: |
+          if ($env:SOURCE_REF.StartsWith('refs/tags/') -and $env:SOURCE_TAG -cne $env:RELEASE_TAG) {
+            throw 'Pushed tag must match VERSION exactly: vX.Y.Z.'
+          }
+          ./tools/build-release.ps1 -Tag $env:RELEASE_TAG
+      - name: Verify existing tag targets this commit
+        env:
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          $existingTag = git tag --list $env:RELEASE_TAG
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect release tags.' }
+          if ($existingTag) {
+            $tagCommit = git rev-parse "$($env:RELEASE_TAG)^{commit}"
+            if ($LASTEXITCODE -ne 0 -or $tagCommit -cne $env:RELEASE_COMMIT) {
+              throw 'Existing release tag points to a different commit. Use a new version.'
+            }
+          }
       - name: Publish release assets
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
         run: >-
           gh release create $env:RELEASE_TAG
           dist/module.json dist/lancer-npc-pilot.zip
-          --verify-tag --generate-notes --latest
+          --target $env:RELEASE_COMMIT --generate-notes --latest
           --title "Lancer NPC Pilot $env:RELEASE_TAG"

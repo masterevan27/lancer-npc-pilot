@@ -32,17 +32,29 @@ staged acceptance gates.
    them into `main` and push that branch. Make the repository public (or provide
    another unauthenticated hosting arrangement) so Foundry can fetch both assets.
    Enable GitHub Actions for the repository.
-4. Tag the intended commit and push that tag, for example:
+4. A push to `main` that changes the root `VERSION` file automatically runs
+   `.github/workflows/release.yml`. The workflow runs the tests, validates the
+   matching version sources and release URLs, and packages the module. It creates
+   the matching `vX.Y.Z` tag at that push's exact commit and publishes a GitHub
+   release with both assets, marked latest. Use a new version for each release;
+   the workflow does not bump versions or overwrite existing releases.
+   Agents continue updating the version files after changes under the existing
+   versioning rules. An existing tag must point to the exact source commit.
+
+   Main pushes that do not change `VERSION` do not publish a release. Update all
+   three version sources and the download URL together as described in step 1.
+   The workflow uses its built-in GitHub token; no personal access token or
+   model API key is needed.
+
+   Manual version-tag pushes remain supported, for example:
 
    ```powershell
    git tag v0.3.1
    git push origin v0.3.1
    ```
 
-   `.github/workflows/release.yml` runs the tests, validates the tag and packages
-   the module, then creates a GitHub release with both assets and marks it latest.
-   It uses the workflow's built-in GitHub token; no personal access token or
-   model API key is needed. A normal branch push does not publish a release.
+   A manual tag must match `VERSION` exactly. Do not also push a manual tag for
+   a version being published automatically from `main`.
    If publication fails, inspect the workflow and release state before retrying;
    an existing release is not overwritten automatically.
    Rerunning a failed tag workflow uses that tag's original source. If code
