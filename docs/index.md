@@ -1,5 +1,9 @@
 # Documentation
 
+- [Roadmap](roadmap.md): verified mechanics progress and planned book-derived NPC behavior policies
+- [NPC policy contract](superpowers/specs/2026-11-03-npc-policy-contract-design.md): approved policy data, precedence and Cataphract behavior scenarios
+- [Policy selector implementation plan](superpowers/plans/2026-11-03-policy-selector.md): pure selection, candidate retention and explicit module-only review
+- [Policy selector evidence](review-evidence/2026-11-03-policy-selector.md): 0.8.0 scope, scenario ownership and remaining native acceptance gates
 - [Design](design.md): intent, architecture, milestones
 - [Versioning](VERSIONING.md)
 - [Relay](../relay/README.md): run the model relay on the owner PC

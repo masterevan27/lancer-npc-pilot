@@ -1,6 +1,8 @@
 import { generateCandidates, pickTop } from '../core/options.mjs';
 import { buildPrompt } from '../core/prompt.mjs';
 import { interpretReply, retryMessage } from '../core/reply.mjs';
+import { canonicalPlanKey, evaluatePolicyCandidate, comparePolicyEvaluations, selectPolicyDecision } from '../core/policy.mjs';
+import { explainEvaluation } from '../core/policy-metrics.mjs';
 
 /** Pure orchestration with injected I/O. Only approve() can reach execution. */
 export class PilotController {
@@ -10,8 +12,8 @@ export class PilotController {
   #executing = false;
   #usedTurns = new Set();
 
-  constructor({ read, request, execute, canExecute }) {
-    Object.assign(this, { read, request, execute, canExecute });
+  constructor({ read, request, execute, canExecute, readDecisionConfig = () => ({mode:'model',stamp:'model'}), resolvePolicyContext }) {
+    Object.assign(this, { read, request, execute, canExecute, readDecisionConfig, resolvePolicyContext });
   }
 
   cancel() {
@@ -24,7 +26,10 @@ export class PilotController {
     this.cancel();
     const epoch = this.#epoch;
     const board = this.read();
+    const config = this.readDecisionConfig(board);
     if (this.#usedTurns.has(board.turn)) throw Error('This NPC turn was already handed to execution. Continue manually.');
+    if (config.mode === 'policy') return this.#planPolicy(board,config,epoch);
+    if (config.mode !== 'model') throw Error('Choose model or policy decision mode in module settings. No action was taken.');
     const options = pickTop(generateCandidates(board.snapshot)
       .filter(o => ['attack', 'boost', 'retreat', 'hold'].includes(o.action.kind)), 8);
     if (!options.length) throw Error('No supported legal options are available. Play this turn manually.');
@@ -42,20 +47,63 @@ export class PilotController {
           { role: 'user', content: retryMessage(choice.error, options) });
       }
       if (epoch !== this.#epoch) throw Error('Planning was cancelled or superseded.');
-      const review = { ...structuredClone(board), options: structuredClone(options), choice: structuredClone(choice) };
+      const review = { ...structuredClone(board), mode:'model',state:'ready',diagnostics:[],options: structuredClone(options), choice: structuredClone(choice) };
       // Keep the authoritative board/options private; callers may edit their UI copy.
-      this.#review = { public: review, board, options: structuredClone(options), choice: structuredClone(choice) };
+      this.#review = { public: review, board, config:structuredClone(config),state:'ready',options: structuredClone(options), choice: structuredClone(choice) };
       return review;
     } finally { if (epoch === this.#epoch) this.#pending = null; }
+  }
+
+  async #planPolicy(board,config,epoch) {
+    this.#pending = new AbortController();
+    const signal=this.#pending.signal;
+    try {
+      let context;
+      try {
+        if (!this.resolvePolicyContext) throw Error('Policy context is unavailable; bind a supported NPC class or play manually.');
+        context=await this.resolvePolicyContext(board,structuredClone(config),{signal});
+      } catch(e) {
+        if(signal.aborted || epoch!==this.#epoch) throw Error('Planning was cancelled or superseded.');
+        context={state:'needs-input',coverageGaps:[e.message]};
+      }
+      if(epoch!==this.#epoch || signal.aborted) throw Error('Planning was cancelled or superseded.');
+      const fresh=this.read(),freshConfig=this.readDecisionConfig(fresh);
+      if(fresh.turn!==board.turn || fresh.stamp!==board.stamp || freshConfig.stamp!==config.stamp) {
+        this.cancel();throw Error('The board or decision configuration changed during planning. Re-plan.');
+      }
+      let decision;
+      if(!['ready','partial'].includes(context.state)) decision={state:context.state ?? 'needs-input',candidates:[],evaluations:[],
+        selectedKey:null,diagnostics:context.coverageGaps ?? ['Policy configuration requires input.']};
+      else {
+        const candidates=generateCandidates(context.snapshot,{candidateKey:canonicalPlanKey,
+          compareCandidates:(a,b)=>comparePolicyEvaluations(evaluatePolicyCandidate(a,context),evaluatePolicyCandidate(b,context))})
+          .filter(o=>['attack','boost','retreat','hold'].includes(o.action.kind));
+        decision=selectPolicyDecision(candidates,context);
+      }
+      const options=decision.candidates;
+      const selected=options.find(o=>o.key===decision.selectedKey);
+      const explanation=selected ? explainEvaluation(decision.evaluations.find(e=>e.planKey===selected.key),context)
+        : {reason:'No supported policy choice. Check the class binding and coverage diagnostics, re-plan, or play manually.',warnings:[]};
+      const choice={source:'policy',optionId:selected?.id ?? null,reason:explanation.reason,line:''};
+      const diagnostics=[...decision.diagnostics,...(decision.search?.limitations ?? [])];
+      const warnings=[...(board.warnings ?? []),...diagnostics,...new Set(decision.evaluations.flatMap(e=>e.warnings))];
+      const review={...structuredClone(board),mode:'policy',state:decision.state,policyId:context.policy?.id ?? null,
+        diagnostics:structuredClone(diagnostics),warnings,options:structuredClone(options),choice:structuredClone(choice)};
+      this.#review={public:review,board,config:structuredClone(config),state:decision.state,
+        options:structuredClone(options),choice:structuredClone(choice),decision:structuredClone(decision)};
+      return review;
+    } finally { if(epoch===this.#epoch) this.#pending=null; }
   }
 
   async approve(review, optionId) {
     const stored = this.#review;
     if (this.#executing || !stored || stored.public !== review) throw Error('This review expired or was already used. Re-plan.');
+    if (!['ready','partial'].includes(stored.state) || !stored.options.length) throw Error('This policy needs input or configuration. Re-plan or play manually.');
     if (!this.canExecute()) throw Error('Execution is disabled. Enable it only after staged acceptance checks.');
     const fresh = this.read();
+    const config=this.readDecisionConfig(fresh);
     if (!fresh.terrainReviewed) throw Error('Review and configure scene terrain before execution.');
-    if (fresh.turn !== stored.board.turn || fresh.stamp !== stored.board.stamp) {
+    if (fresh.turn !== stored.board.turn || fresh.stamp !== stored.board.stamp || config.stamp !== stored.config.stamp) {
       this.cancel(); throw Error('The board or turn changed. Re-plan before approving.');
     }
     const option = stored.options.find(o => o.id === optionId);
@@ -65,7 +113,12 @@ export class PilotController {
     // Bound client memory, retaining recent turns. Persistent reservations and
     // exact native tracker checks additionally protect reloads and other GM clients.
     if (this.#usedTurns.size > 100) this.#usedTurns.delete(this.#usedTurns.values().next().value);
-    try { return await this.execute(structuredClone(option), fresh, structuredClone(stored.choice)); }
+    const verifyDecision = board => {
+      if(!this.canExecute()) throw Error('Execution is disabled. Continue manually.');
+      if(this.readDecisionConfig(board).stamp!==stored.config.stamp)
+        throw Error('The decision configuration changed. Re-plan before execution.');
+    };
+    try { return await this.execute(structuredClone(option), fresh, structuredClone(stored.choice), {verifyDecision}); }
     finally { this.#executing = false; }
   }
 }

@@ -21,10 +21,12 @@ export function isResponsibleGM(game) {
 }
 
 /** Only handed an internally stored, explicitly approved option by the controller. */
-export async function executeOption(option, board, choice, { game, canvas, read, withLock, postLine }) {
+export async function executeOption(option, board, choice, { game, canvas, read, withLock, postLine, verifyDecision = () => {} }) {
   if (!isResponsibleGM(game)) throw Error('Only Foundry’s active GM may execute a Pilot plan.');
   return withLock(`lancer-npc-pilot:${board.turn}`, async () => {
     const fresh = read();
+    if (!isResponsibleGM(game)) throw Error('The active GM changed before execution. Re-plan.');
+    verifyDecision(fresh);
     if (fresh.turn !== board.turn || fresh.stamp !== board.stamp || !fresh.terrainReviewed)
       throw Error('The board changed before execution. Re-plan.');
     const token = canvas.tokens.get(board.snapshot.activeTokenId), actor = token?.actor;
@@ -64,6 +66,7 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     const checkBoard = () => {
       if (!isResponsibleGM(game)) throw Error('The active GM changed. Continue manually.');
       const current = read({ expectedTracker });
+      verifyDecision(current);
       if (token.document.x !== expectedPosition.x || token.document.y !== expectedPosition.y)
         throw Error('The NPC moved away from the approved position. Continue manually.');
       if (current.turn !== board.turn || current.guard !== board.guard)

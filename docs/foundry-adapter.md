@@ -31,11 +31,15 @@ sources:
     resource: ../foundry-module/scripts/core/legality.mjs
   - id: controller
     resource: ../foundry-module/scripts/adapter/controller.mjs
+  - id: policy-context
+    resource: ../foundry-module/scripts/adapter/policy-context.mjs
+  - id: policy-selector
+    resource: ../foundry-module/scripts/core/policy.mjs
   - id: design
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-03T06:03:00Z
+  at: 2026-11-03T08:47:27.664Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -64,9 +68,10 @@ proposal or explicitly enables turn prompts.
    restart the separate relay.
 2. Enable **Lancer NPC Pilot** in a disposable Lancer world. The reference
    environment is Foundry 13.351 with Lancer 3.1.3.
-3. Start the [relay](../relay/README.md) on the GM's PC with a shared secret and
+3. For default model mode, start the [relay](../relay/README.md) on the GM's PC with a shared secret and
    the Foundry origin in `PILOT_ALLOWED_ORIGINS`. Keep provider API keys in the
-   relay environment only.
+   relay environment only. Development 0.8.0 also has an opt-in
+   [module policy mode](#module-policy-mode-development-080) that needs no relay.
 4. As GM, create a Script macro containing:
 
    ```js
@@ -83,12 +88,12 @@ proposal or explicitly enables turn prompts.
    **Alt+P** opens the same workflow for GMs; the restricted binding is absent
    from player settings. A player controlling a mech still cannot plan NPC
    turns. Existing copied macros need the guarded command above; module updates
-   do not rewrite world macros. First GM use opens Relay settings. Choose
+   do not rewrite world macros. First GM use in model mode opens Relay settings. Choose
    Local / OpenAI compatible or Anthropic API, enter the relay shared secret,
    and optionally override the model. A blank override uses the relay setting.
    These values are browser-client settings; a provider API key is never needed
    in Foundry. The saved shared secret is not inserted into rendered HTML.
-5. Start a combat and select an NPC turn. Development 0.7.0 reads remaining
+5. Start a combat and select an NPC turn. Development 0.7.0 and later read remaining
    native movement and actions, including a manually started partial turn.
    If a quick slot was already spent, earlier action identity is unknown;
    attacks and Boost stay manual rather than risking an illegal repeat or mode switch.
@@ -363,3 +368,57 @@ node tools/report-npc-coverage.mjs --chunk 2
 It accounts for all feature/tier records, class/template owners and unassigned
 features. Source classification and implementation gates remain separate from
 executable descriptor support. See the [coverage evidence](review-evidence/2026-11-02-coverage-diagnostics.md).
+
+## Module policy mode (development 0.8.0)
+
+In **Configure Settings → Lancer NPC Pilot → Decision mode**, select
+**Module policy (no relay)** on the GM client. Model mode remains the default.
+Policy mode never reads a relay secret or sends a model request, including
+when its policy is invalid. It uses the same Plan Turn macro and Alt+P.
+Execution and turn prompts still default off.
+
+Bind the selected native NPC actor once through the GM-only module API:
+
+```js
+const actor = canvas.tokens.controlled[0]?.actor;
+await game.modules.get('lancer-npc-pilot').api.bindActorPolicy(actor, {
+  classId: 'npcc_cataphract',
+  policyId: 'cataphract-base-t1'
+});
+```
+
+The class identifier is the installed `npc_class` **LID**, not its display name
+or embedded item ID. The actor must contain exactly one matching class item.
+The binding stores only those identifiers on the actor, not source material,
+review authority or an execution handler. Initial scope is T1, the four base
+Cataphract features, no templates and no optional systems. Unexpected loadouts
+or ambiguous/missing bindings give an unconfigured review with a manual path.
+The GM API deliberately changes the selected actor's binding; use a disposable
+world for acceptance. It does not create actors or enable execution.
+
+Feature sources are captured from the same board snapshot and checked with
+Web Crypto SHA-256 against maintained 3.1.3 catalogue fingerprints. Rule drift
+removes the affected source's choices; readiness and budget remain independent
+requirements. A spent/restricted ordinary attack budget reports Ram Cannon
+unavailable with the budget reason while retaining its source-match metadata.
+A matching source cannot enable a missing special handler.
+Currently Trample, Impale and Point-Defense Shield remain manual, so a valid
+base actor reports **partial** coverage even when ordinary Ram Cannon attacks
+and movement are available. Unknown shield benefits and reaction exposure are
+visible; no resistance, reaction immunity, save result or displacement is applied
+by this selector. With no supported attack it may suggest an ordinary move/hold.
+
+The review shows the policy/state, estimated reasons, coverage and uncertainty,
+plus **Re-plan**, **Policy settings**, **Skip** and **Do it manually**. Policy
+settings explains mode/binding setup; it does not open relay setup. There is no
+objective editor yet: production uses a free order, while structured orders and
+bounded individual preferences are pure injected interfaces. Needs-input and
+unconfigured reviews have no Execute button. Ready/partial choices still require
+normal explicit approval with execution enabled and terrain reviewed.
+
+A changed board, turn, budget, mode, binding, order or policy configuration
+expires review before execution/reservations. Changes during asynchronous source
+hashing discard the proposal. Native execution, locks and resource guards stay
+in the existing executor. Selection examines one shortest path per endpoint and
+one supported action, capped to eight review slots with explicit omissions.
+See [selector evidence and live gates](review-evidence/2026-11-03-policy-selector.md).

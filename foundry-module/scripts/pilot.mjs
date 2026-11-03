@@ -2,8 +2,11 @@ import { MODULE_ID, extractSnapshot } from './adapter/snapshot.mjs';
 import { PilotController, requestDecision } from './adapter/controller.mjs';
 import { executeOption, isResponsibleGM } from './adapter/executor.mjs';
 import { showReview, escapeHtml } from './adapter/review.mjs';
+import { bindActorPolicy,readDecisionConfig,resolvePolicyContext } from './adapter/policy-context.mjs';
 
 export function registerSettings(game) {
+  game.settings.register(MODULE_ID,'decisionMode',{name:'Decision mode',scope:'client',config:true,type:String,
+    choices:{model:'Model (relay)',policy:'Module policy (no relay)'},default:'model'});
   for (const [key, name, type, value, scope, config] of [
     ['promptOnTurn', 'Offer a proposal when an NPC turn starts', Boolean, false, 'world', true],
     ['executionEnabled', 'Enable token execution (staged scenes only)', Boolean, false, 'world', true],
@@ -31,15 +34,27 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     });
   };
   const controller = new PilotController({ read, canExecute,
+    readDecisionConfig:board=>readDecisionConfig({game,board}),
+    resolvePolicyContext:(board,config,options)=>resolvePolicyContext(board,config,{game,...options}),
     request: (payload, options) => requestDecision(payload, {
       relayUrl: setting('relayUrl'), secret: setting('secret'), provider: setting('provider'), model: setting('model'),
     }, options),
-    execute: (option, board, choice) => executeOption(option, board, choice, { game, canvas, read, withLock,
+    execute: (option, board, choice, {verifyDecision}) => executeOption(option, board, choice, { game, canvas, read, withLock,verifyDecision,
       postLine: (line, token) => ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token }),
         flavor: 'NPC intent — before resolution', content: `<p>${escapeHtml(line)}</p>` }) }),
   });
   let busy = false;
   const api = {
+    async configurePolicy() {
+      if(!game.user.isGM) throw Error('GM only.');
+      await DialogV2.prompt({window:{title:'NPC Pilot — policy settings'},rejectClose:false,
+        content:'<p>Select Decision mode in Game Settings → Configure Settings → Lancer NPC Pilot. Policy mode requires no relay.</p><p>Bind a T1 base Cataphract with the GM module API; see the adapter guide. Only one native class and its base loadout are supported. Specials remain manual. Re-plan after changing the binding or mode.</p>',
+        ok:{label:'Close',callback:()=>true}});
+      controller.cancel();return false;
+    },
+    async bindActorPolicy(actor, binding) {
+      const result=await bindActorPolicy(actor,binding,{game});controller.cancel();return result;
+    },
     async configureRelay() {
       if (!game.user.isGM) throw Error('GM only.');
       const provider = setting('provider');
@@ -73,13 +88,16 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
       if (busy) { notifications.info('NPC Pilot is already planning or reviewing a turn.'); return; }
       busy = true;
       try {
-        if (!setting('secret') && !await api.configureRelay()) return;
+        if ((setting('decisionMode') ?? 'model') === 'model' && !setting('secret') && !await api.configureRelay()) return;
         for (;;) {
           notifications.info('NPC Pilot is planning. No token action is taken until you approve.');
           const review = await controller.plan();
           const result = await showReview(review, { DialogV2, canExecute: canExecute() && review.terrainReviewed });
           if (result?.action === 'reask') continue;
-          if (result?.action === 'configure') { if (await api.configureRelay()) continue; break; }
+          if (result?.action === 'configure') {
+            if (review.mode==='policy') { await api.configurePolicy(); break; }
+            if (await api.configureRelay()) continue; break;
+          }
           if (result?.action === 'terrain') { if (await api.reviewTerrain()) continue; break; }
           if (result?.action === 'execute') {
             await controller.approve(review, result.optionId);

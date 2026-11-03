@@ -17,9 +17,11 @@ system). On an NPC's turn it chooses a tactically sensible, in-character
 action. The GM approves it, and the module carries it out through Foundry and
 the Lancer system's own flows.
 
-It is a hybrid: deterministic code works out what is **legal and how good it
-is**, and a language model picks among those options and supplies the
-character. The model never rolls dice or decides outcomes; Foundry does.
+Deterministic code works out what is **legal and how good it is**. Development
+0.8.0 offers an explicit module policy selector without a model connection,
+alongside the default model selector and its characterization. Both use the
+same GM review and native execution guards. Neither rolls dice or decides
+outcomes; Foundry does.
 
 ## Goals
 
@@ -53,6 +55,32 @@ defines the implementation chunks and acceptance gates. Current source still
 has the adapter restrictions documented in the setup guide; catalogue inventory
 and native effect cards do not establish support. The anti-goals below continue
 to apply.
+
+## Module policy selector (development 0.8.0)
+
+The [approved policy contract](superpowers/specs/2026-11-03-npc-policy-contract-design.md)
+now has a pure selector and opt-in client mode. Closed reviewed records bind
+one native class LID to a T1 base Cataphract policy. Native feature sources are
+captured before asynchronous SHA-256, checked against catalogue fingerprints,
+and kept out of model requests. Identity/loadout ambiguity is unconfigured;
+feature drift excludes the affected choices and reports partial coverage.
+
+Supported legal candidates retain endpoint identities before policy pruning.
+Ranking uses soft order, class weighted utility, bounded individual preference,
+then existing basic score, followed by movement cost and canonical identity.
+Hard orders never relax; missing mandatory native geometry requires input.
+Production supplies a free order. Other structured orders are core interfaces
+for injected inputs, with no objective editor yet. No reviewed special handlers
+are added: ordinary movement and supported Ram Cannon choices can be offered,
+while special mechanics, shield protection and reaction context remain explicit
+gaps. This is a bounded one-move/one-action search with one shortest path per
+endpoint, not an optimal multi-turn planner.
+
+Policy planning never requests a relay or a secret. Its review holds private
+authoritative choices, re-reads board/configuration after hashing and before
+approval, and refuses stale/no-choice/duplicate approval before execution.
+[Selector evidence](review-evidence/2026-11-03-policy-selector.md) separates
+synthetic ranking tests, installed-code conformance and unverified live gates.
 
 ## Anti-goals (a failure even if it "works")
 

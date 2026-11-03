@@ -6,6 +6,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { canonicalRuleSource } from '../foundry-module/scripts/core/rule-source.mjs';
 import { buildCoverageManifest, auditMechanicCoverage } from '../foundry-module/scripts/core/coverage.mjs';
 
 const sortById = (a, b) => a.id.localeCompare(b.id);
@@ -16,19 +17,8 @@ const featureKinds = new Set(['Weapon', 'Trait', 'System', 'Reaction', 'Tech']);
 
 // Explicit rule-source fields. Current readiness/uses and usage-counter values
 // are deliberately absent: identical rules keep their identity during play.
-const RULE_FIELDS = ['lid', 'type', 'weapon_type', 'effect', 'on_hit', 'on_attack', 'on_crit', 'trigger',
-  'activation', 'tech_type', 'tech_attack', 'accuracy', 'attack_bonus', 'range', 'damage', 'tags',
-  'tier_override', 'bonus', 'override', 'actions', 'deployables', 'synergies', 'frequency', 'cost', 'heat_cost'];
-function sortedSource(value) {
-  if (Array.isArray(value)) return value.map(sortedSource);
-  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort()
-    .filter(key => value[key] !== undefined).map(key => [key, sortedSource(value[key])]));
-  return value;
-}
 function sourceFingerprint(system) {
-  const selected = Object.fromEntries(RULE_FIELDS.filter(key => system[key] !== undefined)
-    .map(key => [key, system[key]]));
-  return createHash('sha256').update(JSON.stringify(sortedSource(selected))).digest('hex');
+  return createHash('sha256').update(canonicalRuleSource(system)).digest('hex');
 }
 
 /** Inventory, not a rules classifier: prose signals do not establish support. */

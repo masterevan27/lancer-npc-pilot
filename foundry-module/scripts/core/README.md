@@ -5,6 +5,33 @@ a plain-JSON **snapshot** of the board into ranked, legal turn options. It
 builds the model prompt and checks the model's reply. Everything here runs
 under `node --test` from the repository root.
 
+Development 0.8.0 also selects supported options deterministically without a
+model. `policy-data.mjs` validates closed inert records against the maintained
+registry; `policy-orders.mjs` checks hard native-footprint/distance constraints;
+`policy-metrics.mjs` supplies finite utilities and factual explanations; and
+`policy.mjs` resolves identity, evaluates and selects up to eight choices.
+`rule-source.mjs` shares canonical rule serialization with the catalogue tool;
+hashing stays in Node tooling or the browser adapter.
+
+`generateCandidates(snapshot,{compareCandidates,candidateKey})` optionally retains
+endpoint/path identities before pruning. Defaults preserve model-mode output.
+Policy ranking is lexicographic: soft order, weighted class utility, individual
+preference, basic score, then lower movement cost and canonical key. Unknown
+applicable goals retain their weight with utility zero, without asserting that
+the physical benefit is zero. Risk tolerance is bounded to -1..1 in its own
+dimension. Class weights 3/2/3/2 and pressure normalization of 20 estimated HP
+are implementation tuning. Soft protection uses 75–100 inside the supplied
+radius and at most 74 outside; no threat or protection guarantee is inferred.
+
+`selectPolicyDecision(candidates,context,{maxOptions,maxCandidates})` defaults to
+8/4096. Search truncation follows canonical identity; evaluated best comes first,
+then supported family representatives within the cap. Diagnostics name omitted
+families and bounds. Generation retains one shortest route per endpoint and
+one move plus one action. States ready/partial may suggest a choice;
+needs-input/unconfigured never select a fallback. Production currently supplies
+only a free order and conservative special/reaction gaps. Synthetic CAT fixtures
+do not grant mechanics. See [selector evidence](../../../docs/review-evidence/2026-11-03-policy-selector.md).
+
 ## Data flow
 
 ```

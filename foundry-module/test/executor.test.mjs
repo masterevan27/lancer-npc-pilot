@@ -99,6 +99,13 @@ test('missing or nonfinite approved waypoint geometry is refused before reservat
     assert.equal(s.calls.length, 0);
   }
 });
+test('review R1 executor invokes the private decision guard inside the lock before any reservation',async()=>{
+ const s=setup();let release;
+ s.env.withLock=async(_key,fn)=>{await new Promise(r=>release=r);return fn();};
+ let changed=false;s.env.verifyDecision=()=>{if(changed)throw Error('Decision configuration changed.');};
+ const pending=executeOption(s.option,s.board,{},s.env);changed=true;release();
+ await assert.rejects(pending,/configuration changed/);assert.equal(s.calls.length,0);
+});
 
 function modeSetup(mode) {
   const s = setup();

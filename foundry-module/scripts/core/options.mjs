@@ -87,6 +87,8 @@ export function generateOptions(snap, opts = {}) {
  */
 export function generateCandidates(snap, opts = {}) {
   const w = mergeWeights(opts.weights);
+  const preferred = opts.compareCandidates ? (a,b) => opts.compareCandidates(finish(a),finish(b)) < 0 : better;
+  const finalize = c => opts.candidateKey ? { ...finish(c), key: opts.candidateKey(finish(c)), family:c.action.kind } : finish(c);
   const me = snap.tokens.find((t) => t.id === snap.activeTokenId);
   if (!me) throw new Error(`active token "${snap.activeTokenId}" not found`);
   const grid = snap.grid;
@@ -130,7 +132,7 @@ export function generateCandidates(snap, opts = {}) {
     };
   };
 
-  if (hasStatus(me, 'STUNNED')) return [finish(hold())];
+  if (hasStatus(me, 'STUNNED')) return [finalize(hold())];
 
   const immobile = hasStatus(me, 'IMMOBILIZED');
   const slowed = hasStatus(me, 'SLOWED');
@@ -145,9 +147,10 @@ export function generateCandidates(snap, opts = {}) {
 
   const out = [];
   const keep = (cand) => {
+    if (opts.candidateKey) cand = { ...cand, key: opts.candidateKey(finish(cand)) };
     const prev = out.findIndex((c) => c.key === cand.key);
     if (prev === -1) out.push(cand);
-    else if (better(cand, out[prev])) out[prev] = cand;
+    else if (preferred(cand, out[prev])) out[prev] = cand;
   };
 
   // --- attacks ---------------------------------------------------------------
@@ -243,7 +246,8 @@ export function generateCandidates(snap, opts = {}) {
             ...def.facts, moveCost: r.cost, usesBoost: r.cost > speed, ...heatFacts(),
           },
         };
-        if (!bestCand || better(cand, bestCand)) bestCand = cand;
+        if (opts.candidateKey) keep(cand);
+        else if (!bestCand || preferred(cand, bestCand)) bestCand = cand;
       }
       if (bestCand) keep(bestCand);
     }
@@ -266,7 +270,8 @@ export function generateCandidates(snap, opts = {}) {
         score: w.retreatBase + w.retreatPerSpaceGained * (after - before) + risk * def.value + w.moveCost * r.cost,
         facts: { ...def.facts, distanceBefore: before, moveCost: r.cost, usesBoost: r.cost > speed, ...heatFacts() },
       };
-      if (!bestCand || better(cand, bestCand)) bestCand = cand;
+      if (opts.candidateKey) keep(cand);
+      else if (!bestCand || preferred(cand, bestCand)) bestCand = cand;
     }
     if (bestCand) keep(bestCand);
   }
@@ -285,13 +290,14 @@ export function generateCandidates(snap, opts = {}) {
         score: w.hideBase + risk * def.value + w.moveCost * r.cost,
         facts: { ...def.facts, moveCost: r.cost, ...heatFacts() },
       };
-      if (!bestCand || better(cand, bestCand)) bestCand = cand;
+      if (opts.candidateKey) keep(cand);
+      else if (!bestCand || preferred(cand, bestCand)) bestCand = cand;
     }
     if (bestCand) keep(bestCand);
   }
 
   keep(hold());
-  return out.map(finish);
+  return out.map(finalize);
 }
 
 function finish(c) {

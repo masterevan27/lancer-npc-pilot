@@ -1,0 +1,326 @@
+[
+  {
+    "id": "CAT-01",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "shield": "unique-useful"
+    },
+    "expected": {
+      "relation": "Useful unique closest hostile beats a physical tie",
+      "reason": "shield-position"
+    }
+  },
+  {
+    "id": "CAT-02",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "shield": "tie"
+    },
+    "expected": {
+      "relation": "All equal hostile distances give zero shield utility",
+      "reason": "shield-tie"
+    }
+  },
+  {
+    "id": "CAT-03",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "shield": "incomplete"
+    },
+    "expected": {
+      "relation": "Missing population/distance is unknown",
+      "reason": "shield-context-unknown"
+    }
+  },
+  {
+    "id": "CAT-04",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "priority": "explicit"
+    },
+    "expected": {
+      "relation": "Supplied priority access beats travel alone",
+      "reason": "priority-access"
+    }
+  },
+  {
+    "id": "CAT-05",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "priority": null
+    },
+    "expected": {
+      "relation": "No rear area is invented",
+      "reason": "priority-context-unknown"
+    }
+  },
+  {
+    "id": "CAT-06",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "mechanics-gated",
+    "suite": "policy-candidates.test.mjs",
+    "inputs": {
+      "trample": false,
+      "occupied": true
+    },
+    "expected": {
+      "relation": "Unsupported Trample and occupied endpoint are refused",
+      "reason": "trample-unavailable"
+    },
+    "gate": "Real special descriptor and native execution are unavailable; test refusal only."
+  },
+  {
+    "id": "CAT-07",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "reaction": "exposed"
+    },
+    "expected": {
+      "relation": "Known unexposed route beats exposed without Trample immunity",
+      "reason": "reaction-exposed"
+    }
+  },
+  {
+    "id": "CAT-08",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "facts",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "reaction": null
+    },
+    "expected": {
+      "relation": "Unknown reaction exposure stays unknown",
+      "reason": "reaction-context-unknown"
+    }
+  },
+  {
+    "id": "CAT-09",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "mechanics-gated",
+    "suite": "policy-context.test.mjs",
+    "inputs": {
+      "impale": false
+    },
+    "expected": {
+      "relation": "Unavailable Impale retains ordinary choices under partial coverage",
+      "reason": "impale-unavailable"
+    },
+    "gate": "Real special descriptor and native execution are unavailable; test refusal only."
+  },
+  {
+    "id": "CAT-10",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-metrics.test.mjs",
+    "inputs": {
+      "displacement": "hypothetical"
+    },
+    "expected": {
+      "relation": "Useful reviewed hypothetical displacement ranks higher conditionally",
+      "reason": "displacement-conditional"
+    }
+  },
+  {
+    "id": "CAT-11",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "mechanics-gated",
+    "suite": null,
+    "inputs": {
+      "nativeReceipt": null
+    },
+    "expected": {
+      "relation": "Only real native receipts may resume Impale; selector has no continuation",
+      "reason": "native-continuation-unimplemented"
+    },
+    "gate": "Native confirmed Impale save/choice/drag continuation is outside selector scope."
+  },
+  {
+    "id": "CAT-12",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-orders.test.mjs",
+    "inputs": {
+      "order": "hold-area"
+    },
+    "expected": {
+      "relation": "Hard hold-area excludes pursuit and never relaxes",
+      "reason": "outside-hold-area"
+    }
+  },
+  {
+    "id": "CAT-13",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-selection.test.mjs",
+    "inputs": {
+      "order": "protect-ally"
+    },
+    "expected": {
+      "relation": "Soft ally protection precedes class utility",
+      "reason": "protect-ally"
+    }
+  },
+  {
+    "id": "CAT-14",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-selection.test.mjs",
+    "inputs": {
+      "riskTolerance": 1
+    },
+    "expected": {
+      "relation": "Class utility precedes bounded personality",
+      "reason": "individual-bounds"
+    }
+  },
+  {
+    "id": "CAT-15",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-candidates.test.mjs",
+    "inputs": {
+      "endpoints": 2
+    },
+    "expected": {
+      "relation": "Policy-best endpoint survives generic weapon/target dedup",
+      "reason": "pre-dedup-selection"
+    }
+  },
+  {
+    "id": "CAT-16",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-selection.test.mjs",
+    "inputs": {
+      "maxOptions": 1
+    },
+    "expected": {
+      "relation": "Retain best and report omitted families/search bounds",
+      "reason": "omitted-families"
+    }
+  },
+  {
+    "id": "CAT-17",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-selection.test.mjs",
+    "inputs": {
+      "shuffle": true
+    },
+    "expected": {
+      "relation": "Shuffles and renamed labels preserve canonical ordering",
+      "reason": "canonical-order"
+    }
+  },
+  {
+    "id": "CAT-18",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "ranking",
+    "suite": "policy-selection.test.mjs",
+    "inputs": {
+      "binding": "ambiguous"
+    },
+    "expected": {
+      "relation": "Ambiguous identity and unsupported loadout are unconfigured",
+      "reason": "ambiguous-binding"
+    }
+  },
+  {
+    "id": "CAT-19",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "controller",
+    "suite": "policy-controller.test.mjs",
+    "inputs": {
+      "relay": false
+    },
+    "expected": {
+      "relation": "Disconnected policy selection never requests relay",
+      "reason": "policy-mode"
+    }
+  },
+  {
+    "id": "CAT-20",
+    "policyId": "cataphract-base-t1",
+    "policyRevision": 1,
+    "metricVersion": 1,
+    "synthetic": true,
+    "layer": "controller",
+    "suite": "policy-controller.test.mjs",
+    "inputs": {
+      "stale": true
+    },
+    "expected": {
+      "relation": "Stale configuration/board and duplicate approvals refuse mutation",
+      "reason": "expired-review"
+    }
+  }
+]

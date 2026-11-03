@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { renderReview, showReview } from '../scripts/adapter/review.mjs';
-import { initializePilot } from '../scripts/pilot.mjs';
+import { initializePilot,registerSettings } from '../scripts/pilot.mjs';
+import { environment } from './adapter.test.mjs';
 
 const review = { snapshot: { activeTokenId: 'npc', tokens: [{ id: 'npc', name: '<img src=x onerror=alert(1)>' }] },
   options: [{ id: 'A', score: 1, action: { kind: 'hold' }, move: null, facts: {} }],
@@ -35,6 +36,20 @@ test('partial-turn review exposes remaining shared actions and movement before a
 test('player clients never receive a planning API or install hooks', () => {
   const api = initializePilot({ game: { user: { isGM: false } }, Hooks: { on: () => assert.fail('player hook') } });
   assert.equal(api, null);
+});
+test('policy mode is explicitly selectable on the client, retaining disabled execution and prompts',()=>{
+ const settings=new Map();registerSettings({settings:{register:(_m,k,v)=>settings.set(k,v)},keybindings:{register(){}}});
+ assert.equal(settings.get('decisionMode').default,'model');assert.equal(settings.get('decisionMode').scope,'client');
+ assert.deepEqual(Object.keys(settings.get('decisionMode').choices),['model','policy']);
+ assert.equal(settings.get('executionEnabled').default,false);assert.equal(settings.get('promptOnTurn').default,false);
+});
+test('the production policy planTurn path reaches manual review without reading a secret or opening relay setup',async()=>{
+ const env=environment();let dialogs=0;
+ env.game.users={activeGM:env.game.user};
+ env.game.settings={get:(_m,k)=>{assert.notEqual(k,'secret');return k==='decisionMode'?'policy':false;}};
+ const api=initializePilot({...env,Hooks:{on(){}},notifications:{info(){}},
+   DialogV2:{prompt:()=>assert.fail('relay setup'),wait:async c=>{dialogs++;assert(c.buttons.some(b=>b.label==='Policy settings'));return {action:'manual'};}}});
+ await api.planTurn();assert.equal(dialogs,1);
 });
 
 test('module manifest and versioned files agree and every shipped entry exists', () => {
