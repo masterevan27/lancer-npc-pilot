@@ -21,13 +21,21 @@ sources:
     resource: ../foundry-module/scripts/adapter/executor.mjs
   - id: geometry
     resource: ../foundry-module/scripts/adapter/geometry.mjs
+  - id: budgets
+    resource: ../foundry-module/scripts/adapter/budgets.mjs
+  - id: swept-walls
+    resource: ../foundry-module/scripts/adapter/swept.mjs
+  - id: budget-core
+    resource: ../foundry-module/scripts/core/budgets.mjs
+  - id: legality-core
+    resource: ../foundry-module/scripts/core/legality.mjs
   - id: controller
     resource: ../foundry-module/scripts/adapter/controller.mjs
   - id: design
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-03T00:21:00Z
+  at: 2026-11-03T06:03:00Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -62,16 +70,29 @@ proposal or explicitly enables turn prompts.
 4. As GM, create a Script macro containing:
 
    ```js
-   await game.modules.get('lancer-npc-pilot').api.planTurn();
+   if (!game.user?.isGM) {
+     return ui.notifications.info('NPC Pilot planning is GM-only. No action was taken.');
+   }
+   const api = game.modules.get('lancer-npc-pilot')?.api;
+   if (!api) {
+     return ui.notifications.warn('NPC Pilot is unavailable. Enable it in a Lancer world and reload.');
+   }
+   await api.planTurn();
    ```
 
-   **Alt+P** opens the same workflow. First use opens Relay settings. Choose
+   **Alt+P** opens the same workflow for GMs; the restricted binding is absent
+   from player settings. A player controlling a mech still cannot plan NPC
+   turns. Existing copied macros need the guarded command above; module updates
+   do not rewrite world macros. First GM use opens Relay settings. Choose
    Local / OpenAI compatible or Anthropic API, enter the relay shared secret,
    and optionally override the model. A blank override uses the relay setting.
    These values are browser-client settings; a provider API key is never needed
    in Foundry. The saved shared secret is not inserted into rendered HTML.
-5. Start a combat and select a fresh NPC turn, with full movement and both
-   quick actions available in Lancer's action tracker. Review the ranked
+5. Start a combat and select an NPC turn. Development 0.7.0 reads remaining
+   native movement and actions, including a manually started partial turn.
+   If a quick slot was already spent, earlier action identity is unknown;
+   attacks and Boost stay manual rather than risking an illegal repeat or mode switch.
+   Review the remaining budget shown above the ranked
    alternatives, exact route, model reason, optional NPC line and warnings.
    An unusable model ID gets one retry, then the top option is labeled
    **fallback**. A connection error takes no action.
@@ -109,9 +130,13 @@ tokens, start combat or link a scene automatically.
 ## Supported subset
 
 - Equidistant square grids and Foundry's odd/even row/column hex layouts.
-- All actors are Size ½ or 1 and every token occupies exactly one Foundry grid
-  cell, at equal elevation. Size ½ tokens may be 0.5×0.5 or 1×1; Size 1 tokens
-  must be 1×1. Larger/irregular footprints remain manual, including bystanders.
+- Development 0.7.0 source reads native Size ½,1,2,3,4 footprints at equal
+  elevation, including the six native token shapes. Size½ tokens may be 0.5×0.5
+  or1×1; other token width/height must match actor size. The adapter enumerates
+  exact occupied cells at each candidate position; large hexes are never square
+  approximations. Independent review and copied-world checks of Sizes 2–4 on
+  all five layouts passed; see the scoped evidence below. Broader acceptance
+  remains open.
 - Token documents must already be snapped. Planning never resizes or moves
   them. Small tokens retain their position within a cell; their containing cell
   is conservatively occupied for movement. Their actual centers are used for LOS.
@@ -121,7 +146,14 @@ tokens, start combat or link a scene automatically.
   of snapping error, matching Foundry's integer-pixel commits.
 - NPC Speed is an integer from 0 to 12. All scene tokens need supported Lancer
   actors, including hidden enemies; player clients receive no planning API.
-- Fresh NPC turns only; partial movement/action budgets require manual play.
+- Development 0.7.0 preserves partial native movement and the shared full/quick
+  action pool. One full action requires both quick slots. Protocols close after
+  spending; reactions and native item resources retain their observed state.
+  The adapter still executes at most one approved option per native NPC turn.
+  When either quick slot was spent before planning, the remaining count is
+  displayed but attacks and Boost are excluded: the native tracker does not
+  identify earlier weapon modes or Boost use. Movement-only partial turns can
+  still propose an attack when both quick slots remain.
 - Ordinary single-target Range/Threat weapons, move, Boost/retreat and hold.
   Development 0.4.0 adds separate melee (Threat 2) and ranged (Range 5) modes
   for the reviewed, unmodified T1 Cataphract Ram Cannon on Lancer 3.1.3. The
@@ -139,6 +171,9 @@ tokens, start combat or link a scene automatically.
   identify the remaining implementation chunk and verification gates; unknown kinds
   stay manual. Native-derived stats remain in use, but warnings do not establish
   that additional passive restrictions or effects have been implemented.
+  Development 0.6.0 adds concrete catalogue mechanic guides and unresolved source
+  questions. Their runtime ID/kind association is explicitly informational:
+  the browser has not verified an item's exact source fingerprint.
   A separate warning explains when no usable supported weapon remains; movement
   choices do not establish that the NPC has no weapons.
 - Stunned, Immobilized, Slowed and Impaired are represented by the inherited
@@ -202,9 +237,11 @@ resolution**. Damage is never applied by Pilot.
 
 A cancelled flow, failed chat post or interrupted move may leave part of the
 approved turn spent. There is no automatic retry or rollback; inspect the board
-and finish manually. Pilot conservatively spends the movement allotment for
-its one movement even if the route is shorter than Speed. Remaining quick
-actions are manual. A reservation for this turn survives reloads. In a disposable
+and finish manually. Development 0.7.0 spends the actual approved route cost,
+including difficult occupied cells, and a quick action only for an attack or
+Boost grant. Unspent movement/actions remain in the native tracker, but any
+remaining Pilot actions are manual because the turn reservation survives reloads.
+In a disposable
 test only, after verifying no action happened, the GM can clear a reservation:
 
 ```js
@@ -283,6 +320,15 @@ acceptance and Uplink coexistence remain open. The development source has not be
 published as a release.
 See the [scoped evidence and remaining gates](review-evidence/2026-11-02-execution-acceptance.md).
 
+Later continuation checks in that evidence verified both Boost segments, a
+native ranged attack/damage result, external stale changes before approval and
+between movement segments, reservation-only refusal after reload, same-browser
+tab overlap exclusion, and scoped live wall/LOS/terrain extraction on all five
+supported layouts. Uplink hook coexistence was checked with both transports and
+narration polling disabled. These remain scoped observations; the broad boxes
+and full NPC coverage remain open. Development 0.5.1 keeps the review footer
+visible while long proposal content scrolls, verified at 1280×900 and 1024×768.
+
 ## Full NPC coverage work
 
 The owner requested full special-ability support across NPC classes on 2026-11-01.
@@ -291,8 +337,10 @@ the current adapter does not yet provide it. The local catalogue audit contains
 44 classes (including drones/deployables), 15 templates and 461 features. This is
 an inventory of the installed pack, not every published or homebrew NPC and not
 a passing execution matrix. Area attacks, tech, special effects, passive/template
-modifiers, reactions and larger footprints still have the manual restrictions
-listed above. Lancer system flows do not resolve all of those rules automatically.
+modifiers and reactions still have the manual restrictions listed above.
+Native large footprints are supported within the geometry restrictions above;
+size-dependent special abilities remain manual. Lancer system flows do not
+resolve all of those rules automatically.
 
 Run a read-only inventory with explicit local paths:
 
@@ -303,3 +351,15 @@ node tools/audit-npc-catalog.mjs --pack <npc-items-directory> --foundry-code-roo
 The audit opens a disposable copy of the pack, reports class/feature crosslinks
 and mechanics signals, and omits raw ability prose and world/document IDs. Its
 results describe coverage work remaining, not permission to execute an ability.
+
+The frozen diagnostic report needs no installed database or model call:
+
+```powershell
+node tools/report-npc-coverage.mjs
+node tools/report-npc-coverage.mjs --lid npcf_trample_cataphract
+node tools/report-npc-coverage.mjs --chunk 2
+```
+
+It accounts for all feature/tier records, class/template owners and unassigned
+features. Source classification and implementation gates remain separate from
+executable descriptor support. See the [coverage evidence](review-evidence/2026-11-02-coverage-diagnostics.md).

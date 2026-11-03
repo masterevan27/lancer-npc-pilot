@@ -117,7 +117,7 @@ test('hex half-size approved Boost executes rounded token waypoints and preserve
     withLock: async (_key, fn) => fn(), postLine: async () => {} });
   assert.deepEqual(calls.map(v => v.length), [2, 1]);
   assert.deepEqual({ x: t.document.x, y: t.document.y }, board.positions['6,3']);
-  assert.equal(t.actor.system.action_tracker.move, 0);
+  assert.equal(t.actor.system.action_tracker.move, 1); // 2 base + 2 Boost - 3 actually moved.
   assert.equal(t.actor.system.action_tracker.full, false);
   assert.equal(t.actor.system.action_tracker.quick, true);
 });

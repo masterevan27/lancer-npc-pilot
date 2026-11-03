@@ -15,10 +15,10 @@
 - This scope supersedes the earlier v1 exclusions of reactions, Overwatch, tech attacks/invades and complex targeting. It does not authorize player-mech control or model-generated rules/outcomes.
 - All design anti-goals remain: the AI never rolls or invents outcomes; actions require GM approval; illegal movement/targeting must not reach execution; provider keys remain relay-only; NHP Uplink must not be disrupted.
 - The module uses plain ES modules with no build step. The relay uses Node >= 20 built-ins only. Tests run with `node --test` from the intended checkout.
-- Continue in `G:/GIT-REPOS/lancer-npc-pilot/.worktrees/planning-errors` on `codex/planning-errors`, as the owner explicitly selected. Preserve the incoming uncommitted REQ-2 changes and their regression cases. Do not reset or overwrite other work.
-- The owner subsequently authorized documentation review, local landing and a push of the verified partial milestone. This does not authorize release tags, installation, world mutation or deployment. Staged live runs need their applicable authorization and must keep the original campaign untouched.
+- The current continuation explicitly uses `G:/GIT-REPOS/lancer-npc-pilot/.worktrees/coverage` on `codex/coverage-diagnostics`, based on local main d9a1d04. Preserve its incoming scoped evidence append and all ignored logs, deployment tooling and backups. The earlier planning-errors checkout selection is historical.
+- Earlier landing/push authorization covered a previous partial milestone. The current continuation authorizes deployment and disposable copied-world testing only: no paid calls, original-campaign deployment/testing, landing, push or publication. Keep the original campaign untouched.
 - Keep execution and turn prompts off during source development. A passed unit suite does not establish live acceptance.
-- Follow `docs/VERSIONING.md`. Development 0.4.0 incorporates the unreleased 0.3.2 REQ-2 preparation and the new weapon behavior; 0.3.1 remains the latest published release.
+- Follow `docs/VERSIONING.md`. Current development source is 0.7.0; deployed diagnostics are 0.6.0. Source deployment and local version changes are not release publication. Never push the main VERSION change under this continuation.
 - No registered roadmap or pinned OKF bundle was found during this check-in. This plan does not invent dashboard approval or whole-document freshness.
 
 ## Scope and Completion Contract
@@ -29,7 +29,7 @@ Cover T1, T2 and T3, optional features, template changes, installed sizes beyond
 
 Rule-mandated decisions and saves can remain explicit GM/player interactions. Their required inputs, confirmed results and cancellation behavior must be part of the execution state machine. They are different from an unimplemented mechanic. No dependent step may infer a result from prose, a model response or the existence of a chat card.
 
-**Current status:** the first REQ-3 chunk is implemented and independently reviewed: conservative weapon diagnostics and reviewed T1 Ram Cannon modes. The installed catalogue metadata, SHA-256 fingerprints, all-roster accounting test and data-only descriptor/coverage resolver are also implemented. The full 198-test suite passed with installed-source conformance; the final roster drift comparison additionally passed. No executable special-ability descriptor registry or runtime integration has been delivered. Catalogue-wide special abilities, larger tokens and new turn sequencing remain unfinished.
+**Current status:** the first REQ-3 weapon subset, frozen catalogue and inert descriptor resolver remain implemented. Development 0.6.0 adds structured diagnostic obligations for all 461 features/1,383 tiers and 59 owners, plus 911 concrete mechanic records from exact-source research. Of the source classifications, 397 are reviewed and 64 retain explicit questions; all implementation gates remain unresolved. Runtime nonweapon warnings now expose provisional catalogue guides without claiming fingerprint verification. The executable special-ability registry remains empty. See [coverage evidence](../../review-evidence/2026-11-02-coverage-diagnostics.md) and [scoped live acceptance](../../review-evidence/2026-11-02-execution-acceptance.md); neither establishes full NPC support. Native larger-token geometry and observed budgets now have scoped 0.7.0 implementation and live evidence; feature-specific exceptions and new turn sequencing remain unfinished.
 
 ## Verified Native Flow Boundaries
 
@@ -76,7 +76,9 @@ Use JSDoc and plain JSON-compatible values. No model-authored descriptor is exec
 - [x] Freeze all 44 class, 15 template and 461 feature IDs/fingerprints from a temporary database copy. Reconcile count differences explicitly; never open original LevelDB stores with a writer.
 - [x] Write failing coverage tests that preserve every installed entry, detect missing IDs, duplicate descriptors, changed fingerprints, unsupported tiers and runtime-version changes.
 - [x] Implement the descriptor schema, resolver and explicit gaps without broad Effect/On Hit text exemptions or heuristic text-to-execution parsing.
-- [ ] Annotate each mechanic with its owning later chunk and concrete remaining gates; show unresolved/passive coverage in review diagnostics.
+- [x] Annotate each mechanic with its owning later chunk and concrete remaining gates; show unresolved/passive coverage in review diagnostics.
+  - All 911 source-research mechanic records carry owning chunks and acceptance gates. The 64 ambiguous source classifications retain Chunk 1 obligations, and two unassigned owner associations remain visible. This diagnostic step does not complete those source questions or any implementation gate.
+  - The owner authorized one extra narrow round after the two-round cap. The malformed-`gates` regression reproduced the error, the array guard passed targeted/full checks, and the narrow independent review found no issues. Source 0.6.0 was deployed and byte-verified; a read-only runtime check showed the intended warnings. The checked diagnostic step does not establish full coverage acceptance.
 - [x] Verify `node --test foundry-module/test/ability-coverage.test.mjs`. Expect all schema/accounting tests passing; expect the coverage report still to show unfinished mechanics until later chunks deliver them.
 
 ## Chunk 2: Footprints, Legality Context and Exact Budgets
@@ -85,8 +87,22 @@ Use JSDoc and plain JSON-compatible values. No model-authored descriptor is exec
 
 **Interfaces:** `canSpend(budget,cost) -> {ok,reason}`; `spend(budget,cost) -> ActionBudget`; `validateUse(descriptor,use,context) -> {ok,reasons}`. Adapter snapshot adds actual token occupied-cell footprints, action budgets, relevant class/template IDs, reaction availability and per-feature counters. `context` supplies authoritative precomputed geometry/LOS, never browser globals inside the core.
 
+Foundation milestone: public native occupancy extraction matched 7,350 licensed
+cases over all layouts/shapes/installed sizes; pure per-anchor body-cell
+movement/range and budget projection tests pass, including installed Lancer
+action-spending conformance. The foundation suite passed 229 tests. The 0.7.0
+integration candidate connects native maps/sweeps/LOS, remaining budgets and
+resource/class/template state to the adapter and validates execution costs. Its
+pre-review suite passed 296 tests. Both review rounds are complete: round 1's
+three findings were reproduced and corrected, and round 2 found no new issues.
+The corrected suite passed 302 tests, repeated on resume. Copied-world Sizes
+2–4 passed occupied-cell, body terrain, LOS and directed-wall checks on all five
+layouts. Scoped execution evidence is recorded separately. Feature-specific
+legality, native counter periods and template exceptions keep these broad
+boxes open; no special-ability descriptor is executable yet.
+
 - [ ] Write failing tests for every installed Size/tier/template-size variant, multi-cell occupancy, map edges, directional walls, friendly passage and target restrictions.
-- [ ] Add licensed Foundry conformance cases using `getOccupiedGridSpaceOffsets()` and snapped native positions on square, odd/even-row and odd/even-column hex grids. Do not approximate large hex tokens as square footprints.
+- [x] Add licensed Foundry conformance cases using `getOccupiedGridSpaceOffsets()` and snapped native positions on square, odd/even-row and odd/even-column hex grids. Do not approximate large hex tokens as square footprints.
 - [ ] Write budget tests for one full action versus two quick actions, protocols, movement, Boost, once-per-turn/round/scene counters, recharge and Limited uses. Include partial turns and restrictions imposed by conditions/templates.
 - [ ] Implement geometry extraction, directed swept movement checks and budget normalization. Keep unsupported elevation/regions explicit until their exact semantics have conformance tests; log these as full-coverage gaps rather than claiming support.
 - [ ] Verify `node --test foundry-module/test/budgets.test.mjs foundry-module/test/large-geometry.test.mjs foundry-module/test/foundry-runtime.test.mjs`, with `PILOT_FOUNDRY_CODE` set for native conformance. All supported variants must agree; missing licensed runtime is an unverified gate.

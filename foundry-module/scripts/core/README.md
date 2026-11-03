@@ -46,6 +46,8 @@ dice.
 | `prompt.mjs` | `buildPrompt(snap, options, {persona, role})`, `describeOption(opt)` |
 | `reply.mjs` | `interpretReply(text, options, {attempt})`, `retryMessage(error, options)` |
 | `abilities.mjs` | Data-only `validateDescriptor`, `resolveAbility`, `auditCoverage` foundation; not yet connected to executable special abilities |
+| `budgets.mjs` | `normalizeBudget`, `canSpend`, `spend`: one shared action pool, observed/projected trackers and explicit-period counters |
+| `legality.mjs` | `validateUse`: exact-source descriptor, item/actor/timing, budget and explicit target-policy prerequisite checks; does not authorize execution |
 
 Reviewed alternate weapon modes carry an optional `weapon.mode` and matching
 `action.mode` (`melee` or `ranged`). They retain the actual item ID but have
@@ -71,17 +73,18 @@ out data that the core ignores or approximates.
 - Every position is a **grid cell** `{x: column, y: row}` of integers, never
   pixels. Cell keys are the string `"x,y"`.
 - Foundry v13 offsets are `{i: row, j: column}`. Map them to `{x: j, y: i}`.
-- `token.pos` is the token's **anchor cell**. On square grids that is the
-  top-left cell of its n x n footprint. Size 1/2 and size 1 take 1 cell, size 2
-  takes 2x2 and size 3 takes 3x3.
+- `token.pos` is the token's **first occupied cell**, which can differ from
+  Foundry's native top-left anchor. `token.occupiedCells["x,y"]` holds the exact
+  native cells at that hypothetical anchor. A missing key is unavailable.
+  Without native maps, legacy square fixtures use their regular square footprint.
 - **Hex grids:** `grid.type: "hex"` with `grid.hexLayout` set to one of
   `"odd-r"` (the default), `"even-r"`, `"odd-q"` or `"even-q"`. These are
   offset layouts in Red Blob Games naming. `-r` is pointy-top with rows
   offset. `-q` is flat-top with columns offset. Foundry calls them `HEXODDR`,
   `HEXEVENR`, `HEXODDQ` and `HEXEVENQ`. **Verify the parity on a live scene**
   by checking that two cells Foundry calls adjacent are at `cellDistance` 1
-  here. **Limitation:** on hex grids every token is treated as one cell, so
-  multi-hex footprints are not modelled.
+  here. Large hex tokens require native occupied-cell maps. Neither size nor
+  offset-coordinate deltas can reconstruct their shape across grid parity.
 - **Square grids:** `grid.diagonals` is `"equidistant"` (the default; a
   diagonal step costs 1) or `"rectilinear"` (no diagonal steps). Other Foundry
   diagonal rules (alternating 1-2-1, exact) are not supported. Map them to
@@ -98,6 +101,9 @@ out data that the core ignores or approximates.
   and add both directions when the wall blocks both ways. On square grids the
   core also refuses diagonal steps that cut the corner of a `blocked` cell.
 - `difficult`: cells that cost 2 spaces to enter.
+- `blockedAnchorMoves`: directed whole-mover blockers from native center collision,
+  complete native-polygon sweeps, map bounds or engagement. These must not be reinterpreted as individual body-cell
+  walls, which would inflate the obstruction for a larger footprint.
 - `cover`: `{"x,y": "soft"|"hard"}`, the cover a token standing in that cell
   has, with no direction. It feeds the NPC's own defensive score and serves as
   the fallback cover for targets.
@@ -109,13 +115,33 @@ anchor at x,y** to that target. The value is either `true` or `false`, or
 `{visible, cover}`, where `cover` is the target's cover against an attacker
 in that cell. Per-pair cover beats the cell `cover` map.
 
-- Fill it for every cell `reachableCells(snap, activeId)` returns, which means
-  within Speed. Fill it for every hostile token.
+- Fill it for every cell within the active token's observed movement budget
+  (`reachableCells(snap, activeId, {maxCost: snap.actionBudget.move})` in the
+  adapter), including a native movement grant. Fill it for every hostile token.
 - **A missing entry means unknown, and unknown is never treated as
   visible.** An attack needs a known `true` or `visible: true`. Hide needs a
   known `false` for every enemy.
 - For size > 1, compute LOS from any cell of the footprint, which is what the
-  fixture builder does. Check that against the Lancer rules for large mechs.
+  native adapter does with native collision queries between occupied cells.
+
+### Action budgets
+
+The adapter retains actual tracker flags in `observedTracker`; `nativeTracker`
+is a separate projection. `quick` counts the shared slots (`full` plus `quick`
+native flags); a full action is available only when both remain. `spend` is a
+pure projection, never an update or roll. A Boost costs one quick and grants a
+separate Speed allotment without restoring spent base movement. Protocols close
+after spending; free-action history is not an availability pool. Limited,
+Loading and Recharge resources come from observed native item state. Generic
+once-per-turn/round/scene counters require explicit scope/period provenance;
+unknown periods or recharge state never auto-reset. Template exceptions and
+unimplemented effects retain their coverage gates.
+
+Remaining native slots alone do not establish which action was used before the
+snapshot. The adapter blocks attacks and Boost after observed quick-slot use
+until an authoritative usage ledger exists; a movement-only partial turn with
+both slots intact can still attack. This restriction is separate from the pure
+pool projection, which can model future reviewed sequences with known history.
 
 ### Tokens
 

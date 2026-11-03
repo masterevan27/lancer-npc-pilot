@@ -62,8 +62,8 @@ export class PilotController {
     if (!option) throw Error('Choose one of the offered options.');
     this.#executing = true; this.#review = null;
     this.#usedTurns.add(fresh.turn);
-    // Bound client memory, retaining recent turns. A fresh-turn/action-budget guard
-    // in the runtime additionally protects reloads and other GM clients.
+    // Bound client memory, retaining recent turns. Persistent reservations and
+    // exact native tracker checks additionally protect reloads and other GM clients.
     if (this.#usedTurns.size > 100) this.#usedTurns.delete(this.#usedTurns.values().next().value);
     try { return await this.execute(structuredClone(option), fresh, structuredClone(stored.choice)); }
     finally { this.#executing = false; }

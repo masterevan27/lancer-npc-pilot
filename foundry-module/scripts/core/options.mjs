@@ -12,7 +12,8 @@
 //   - the path is a chain of adjacent cells from the token's cell, never
 //     entering blocked cells, enemy/neutral-occupied cells or walled steps,
 //     and never ending on another token;
-//   - path cost <= Speed (attack, hide) or <= 2 x Speed (boost, retreat);
+//   - path cost <= observed remaining movement, plus one Speed grant only
+//     when a legal Boost is available (legacy fixtures default to Speed);
 //   - an attack's target is within the weapon's Range/Threat from the end
 //     cell, and losFrom[end][target] is KNOWN visible. Missing LOS = no attack.
 //
@@ -22,9 +23,10 @@
 // target LOCKON -> +1 accuracy; target INVISIBLE -> 50% of hits miss; target
 // EXPOSED / SHREDDED -> see hit.mjs.
 
-import { cellKey, footprintDistance } from './grid.mjs';
+import { cellKey, tokenDistance } from './grid.mjs';
 import { attackDamage, hitChance } from './hit.mjs';
 import { reachableCells } from './reach.mjs';
+import { canSpend } from './budgets.mjs';
 import {
   areEnemies, findTag, hasStatus, isDefeated, isMeleeWeapon, rangeVal, usesLeft,
 } from './snapshot.mjs';
@@ -94,7 +96,7 @@ export function generateCandidates(snap, opts = {}) {
   const heatNow = me.heat ? me.heat[0] : null;
   const heatCap = me.heat ? me.heat[1] : null;
 
-  const dist = (pos, t) => footprintDistance(grid, pos, me.size, t.pos, t.size);
+  const dist = (pos, t) => tokenDistance(grid, me, t, pos);
   const nearest = (pos) => enemies.reduce((m, e) => Math.min(m, dist(pos, e)), Infinity);
   const defense = (pos) => {
     const cover = snap.cover?.[cellKey(pos)] ?? 'none';
@@ -132,9 +134,13 @@ export function generateCandidates(snap, opts = {}) {
 
   const immobile = hasStatus(me, 'IMMOBILIZED');
   const slowed = hasStatus(me, 'SLOWED');
-  const speed = immobile ? 0 : Math.max(0, Math.floor(me.speed));
+  const budget = snap.actionBudget;
+  const quickAvailable = !budget || canSpend(budget, { quick: 1 }).ok;
+  const boostAvailable = !budget || canSpend(budget, { boost: 1 }).ok;
+  const speed = immobile ? 0 : Math.max(0, Math.floor(budget?.move ?? me.speed));
   const reach1 = reachableCells(snap, me.id, { maxCost: speed });
-  const reach2 = slowed || immobile ? reach1 : reachableCells(snap, me.id, { maxCost: speed * 2 });
+  const reach2 = slowed || immobile || !boostAvailable ? reach1
+    : reachableCells(snap, me.id, { maxCost: speed + (budget?.speed ?? me.speed) });
   const toMove = (r) => (r.to.x === start.x && r.to.y === start.y ? null : { to: r.to, path: r.path, cost: r.cost });
 
   const out = [];
@@ -145,7 +151,7 @@ export function generateCandidates(snap, opts = {}) {
   };
 
   // --- attacks ---------------------------------------------------------------
-  const weapons = (me.weapons ?? []).filter(usableWeapon);
+  const weapons = quickAvailable ? (me.weapons ?? []).filter(usableWeapon) : [];
   const impaired = hasStatus(me, 'IMPAIRED');
   for (const r of reach1.values()) {
     const endKey = cellKey(r.to);
@@ -266,7 +272,7 @@ export function generateCandidates(snap, opts = {}) {
   }
 
   // --- hide: only where every enemy is KNOWN to lack LOS ----------------------
-  if (enemies.length) {
+  if (enemies.length && quickAvailable) {
     let bestCand = null;
     for (const r of reach1.values()) {
       const row = snap.losFrom?.[cellKey(r.to)];

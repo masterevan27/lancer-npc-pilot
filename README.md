@@ -6,20 +6,31 @@ options. A language model, either Claude through the
 Anthropic API or a local model through Ollama, picks one in character. The GM
 approves it, and Foundry and the Lancer system roll the dice.
 
-<!-- doc-media TODO: purpose: show the GM review dialog on a live NPC turn;
-acceptance: sanitized real screenshot from the development 0.5.0 staged hex review;
-blocker: current review capture has not been saved and sanitized for tracking; scoped hex movement/HUD checks passed, but broader acceptance remains open. -->
+![GM review of a Size-2 fixture proposal, showing remaining movement and actions, ranked routes, manual warnings and approval controls](docs/assets/npc-pilot-review-0.7.0.png)
 
-Status: development 0.5.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
+Real review in an isolated scene in the disposable test world, captured November
+3, 2026 with development 0.7.0 (d9a1d04 plus this milestone). The seven-space
+partial budget was seeded on the fixture; this is a real UI capture, not proof
+of naturally retained movement or complete gameplay acceptance.
+[Scoped evidence](docs/review-evidence/2026-11-02-execution-acceptance.md).
+
+Status: development 0.7.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
 The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
-prompts default off. The adapter supports fresh NPC turns on flat equidistant
+prompts default off. The previously staged adapter supports flat equidistant
 square grids and all four offset hex layouts, with single-cell Size ½/1 tokens.
+Development 0.7.0 adds native Size ½–4 footprints and exact partial-turn budgets;
+its independent review and scoped copied-world geometry checks passed. Broader
+live acceptance and full special-ability support remain open.
 Development 0.4.0 adds excluded-weapon diagnostics and reviewed T1 Ram Cannon
 melee/ranged choices. Full NPC special-ability coverage is still being built;
 see its [implementation plan](docs/superpowers/plans/2026-11-01-full-npc-coverage.md). See the
 [adapter setup and acceptance checklist](docs/foundry-adapter.md) and [design](docs/design.md).
+
+Development 0.6.0 adds source-bound coverage work diagnostics for the installed
+roster, including concrete mechanic gates and unresolved source questions.
+These guides do not enable special abilities. [Coverage evidence](docs/review-evidence/2026-11-02-coverage-diagnostics.md).
 
 | Part | Folder | Runs on |
 |---|---|---|

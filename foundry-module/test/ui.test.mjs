@@ -23,6 +23,15 @@ test('Execute is absent when disabled and default dialog action is Skip', async 
   assert(config.buttons.some(b => b.action === 'reask'));
 });
 
+test('partial-turn review exposes remaining shared actions and movement before approval', () => {
+  const partial = structuredClone(review);
+  partial.snapshot.actionBudget = { move: 2, quick: 1, full: false, protocol: false, reaction: true };
+  const html = renderReview(partial, false);
+  assert(html.includes('Movement remaining: 2'));
+  assert(html.includes('Quick actions remaining: 1'));
+  assert(html.includes('Full action available: no'));
+});
+
 test('player clients never receive a planning API or install hooks', () => {
   const api = initializePilot({ game: { user: { isGM: false } }, Hooks: { on: () => assert.fail('player hook') } });
   assert.equal(api, null);

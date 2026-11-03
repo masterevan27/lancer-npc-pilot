@@ -7,7 +7,7 @@ export function environment() {
   const system = { tier: 2, hp: { value: 10, max: 12 }, heat: { value: 0, max: 6 },
     structure: { value: 1, max: 1 }, stress: { value: 1, max: 1 }, armor: 1,
     evasion: 8, edef: 8, speed: 2, sensor_range: 10, size: 1,
-    action_tracker: { move: 2, full: true, quick: true } };
+    action_tracker: { move: 2, full: true, quick: true, protocol: true, reaction: true, free: false, used_reactions: [] } };
   const weapon = { id: 'rifle', name: 'Rifle', type: 'npc_feature',
     system: { type: 'Weapon', loaded: true, charged: true, destroyed: false,
       uses: { value: 2, max: 2 }, tags: [{ lid: 'tg_loading', val: '' }, { lid: 'tg_limited', val: '2' }] },
@@ -44,7 +44,7 @@ export function environment() {
     combatant: { tokenId: 'npc', defeated: false }, combatants: [],
     toObject() { return { id: this.id, turn: this.turn, round: this.round }; } };
   const game = { user: { isGM: true }, system: { id: 'lancer' }, combat };
-  const canvas = { ready: true, scene, grid, dimensions: { width: 800, height: 600,
+  const canvas = { ready: true, scene, grid, walls: { placeables: [] }, dimensions: { width: 800, height: 600,
     sceneRect: { x: 0, y: 0, width: 800, height: 600 } }, tokens: { placeables: tokens, get: id => tokens.find(t => t.id === id) } };
   return { game, canvas, constants: { GRID_TYPES: { SQUARE: 1 }, GRID_DIAGONALS: { EQUIDISTANT: 1 } } };
 }
@@ -60,6 +60,19 @@ test('review warnings account for active and target nonweapon features without g
   assert(result.warnings.some(w => w.includes('passive') && w.includes('Chunk 6')));
   assert(result.warnings.some(w => w.includes('Chunk 7')));
   assert(result.warnings.some(w => w.includes('Chunk 5')));
+  assert.equal(result.snapshot.tokens[0].weapons.length, 1);
+});
+
+test('target traits retain native stats and disclose unresolved exact-source review with provisional gates', () => {
+  const env = environment(), target = env.canvas.tokens.placeables[1];
+  target.actor.items.push({ id: 'trait', name: 'Target Rule', type: 'npc_feature',
+    system: { lid: 'npcf_example', type: 'Trait', effect: 'Custom edited rule text' } });
+  const result = extractSnapshot(env);
+  const warning = result.warnings.find(w => w.includes('Target Rule'));
+  assert(warning.includes('Chunk 1') && warning.includes('unresolved'));
+  assert(warning.includes('Chunk 6') && warning.includes('Provisional'));
+  assert(warning.includes('native-derived stats'));
+  assert.equal(result.snapshot.tokens[1].evasion, target.actor.system.evasion);
   assert.equal(result.snapshot.tokens[0].weapons.length, 1);
 });
 

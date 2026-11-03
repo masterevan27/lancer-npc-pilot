@@ -24,17 +24,30 @@ export function gridInfo(scene, grid, dimensions, constants) {
 
 export function tokenGeometry(token, grid) {
   const d = token.document, size = Number(token.actor.system.size ?? d.width);
-  if (![0.5, 1].includes(size) || d.width !== d.height || ![0.5, 1].includes(d.width)
-    || (size === 1 && d.width !== 1)) throw Error('This adapter supports single-cell Size ½ and Size 1 tokens only.');
+  if (![0.5, 1, 2, 3, 4].includes(size) || d.width !== d.height
+    || (size === 0.5 ? ![0.5, 1].includes(d.width) : d.width !== size))
+    throw Error('Token dimensions must match a supported native Size ½, 1, 2, 3 or 4 footprint.');
+  const geometry = occupiedTokenGeometry(token, grid);
+  if (size <= 1 && geometry.cellsAt(geometry.cell).length !== 1)
+    throw Error('Every token must occupy exactly one grid cell. Larger footprints need manual play.');
+  return geometry;
+}
+
+/** Exact native occupancy extraction; this alone does not enable large-token execution. */
+export function occupiedTokenGeometry(token, grid) {
+  const d = token.document;
   for (const method of ['getCenterPoint', 'getSnappedPosition', 'getOccupiedGridSpaceOffsets', 'getSize'])
     if (typeof d[method] !== 'function') throw Error(`Foundry token geometry API ${method} is unavailable.`);
   const offsetsAt = p => {
     const offsets = d.getOccupiedGridSpaceOffsets(p);
-    if (!Array.isArray(offsets) || offsets.length !== 1 || !Number.isInteger(offsets[0].i) || !Number.isInteger(offsets[0].j))
-      throw Error('Every token must occupy exactly one grid cell. Larger footprints need manual play.');
-    return offsets[0];
+    if (!Array.isArray(offsets) || offsets.length === 0 || offsets.length > 256
+      || offsets.some(c => !Number.isInteger(c?.i) || !Number.isInteger(c?.j))
+      || new Set(offsets.map(c => `${c.i},${c.j}`)).size !== offsets.length)
+      throw Error('Native token occupied cells are unavailable or invalid.');
+    return offsets;
   };
-  const offset = offsetsAt(), cell = { x: offset.j, y: offset.i };
+  // This is the first occupied cell, not Foundry's potentially unoccupied top-left anchor.
+  const offset = offsetsAt()[0], cell = { x: offset.j, y: offset.i };
   const origin = { x: d.x, y: d.y }, center = d.getCenterPoint();
   const snappedOrigin = d.getSnappedPosition();
   const anchor = grid.getCenterPoint(offset), dimensions = d.getSize();
@@ -47,10 +60,17 @@ export function tokenGeometry(token, grid) {
     if (!finitePoint(target)) return null;
     const p = { x: Math.round(snappedOrigin.x + target.x - anchor.x), y: Math.round(snappedOrigin.y + target.y - anchor.y) };
     if (!close(p, d.getSnappedPosition(p))) return null;
-    const offset = offsetsAt(p);
+    const offset = offsetsAt(p)[0];
     return offset.i === c.y && offset.j === c.x ? p : null;
   };
   return { cell, center, dimensions, positionAt,
+    polygonAt: c => {
+      const p = positionAt(c), polygon = d.getGridSpacePolygon?.();
+      if (!p || !Array.isArray(polygon) || polygon.length < 3 || !polygon.every(finitePoint))
+        throw Error('Native token polygon is unavailable; continue manually.');
+      return polygon.map(v => ({ x: p.x + v.x, y: p.y + v.y }));
+    },
+    cellsAt: c => { const p = positionAt(c); return p ? offsetsAt(p).map(o => ({ x: o.j, y: o.i })) : null; },
     centerAt: c => { const p = positionAt(c); return p ? d.getCenterPoint(p) : null; } };
 }
 

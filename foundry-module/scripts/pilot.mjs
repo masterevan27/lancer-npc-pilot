@@ -62,7 +62,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     async reviewTerrain() {
       if (!game.user.isGM || !canvas.scene) throw Error('View a scene as GM first.');
       const confirmed = await DialogV2.confirm({ window: { title: 'Review scene terrain' }, rejectClose: false,
-        content: '<p>Confirm that walls and the configured blocked/difficult cells describe all movement obstacles and costs on this scene. Check cover and reactions manually in every proposal.</p><p>Do not confirm for scenes with unmarked terrain, elevation changes, large tokens or region movement rules.</p>' });
+        content: '<p>Confirm that walls and the configured blocked/difficult cells describe all movement obstacles and costs on this scene. Check every occupied cell of larger tokens, plus cover and reactions, in every proposal.</p><p>Do not confirm for scenes with unmarked terrain, elevation changes, unsupported token dimensions or region movement rules.</p>' });
       if (!confirmed) return false;
       const terrain = canvas.scene.getFlag(MODULE_ID, 'terrain') ?? {};
       await canvas.scene.setFlag(MODULE_ID, 'terrain', { ...terrain, reviewed: true });

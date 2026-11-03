@@ -1,5 +1,7 @@
 import { MODULE_ID } from './snapshot.mjs';
 import { prepareModeFlow } from './weapon-flow.mjs';
+import { normalizeBudget, spend } from '../core/budgets.mjs';
+import { pathCost, movementContext, stepCost } from '../core/reach.mjs';
 
 /** Diagnose stale guards using field paths only; never log document values. */
 export function changedGuardPaths(before, after) {
@@ -47,11 +49,18 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (token.document.x !== approvedPoints[0].x || token.document.y !== approvedPoints[0].y)
       throw Error('The NPC is no longer at the approved starting position. Re-plan.');
     const tracker = structuredClone(actor.system.action_tracker);
+    const budget = board.snapshot.actionBudget ?? normalizeBudget(tracker, { speed: mover.speed });
+    const routeCost = pathCost(board.snapshot, mover.id, route);
+    if (routeCost === null || routeCost !== (option.move?.cost ?? 0))
+      throw Error('Approved movement route or cost is no longer valid. Re-plan.');
+    let projected = budget;
+    if (option.facts.usesBoost) projected = spend(projected, { boost: 1 });
+    projected = spend(projected, { move: routeCost, quick: kind === 'attack' ? 1 : 0 });
     let expectedPosition = { x: token.document.x, y: token.document.y };
     // Persistent reservation survives reloads. No automatic retry after a partial
     // move or cancelled system HUD: the GM decides what remains of this turn.
     await actor.setFlag(MODULE_ID, 'lastExecution', board.turn);
-    let expectedTracker;
+    let expectedTracker = tracker;
     const checkBoard = () => {
       if (!isResponsibleGM(game)) throw Error('The active GM changed. Continue manually.');
       const current = read({ expectedTracker });
@@ -64,11 +73,11 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     checkBoard();
     if (option.move) {
       const points = approvedPoints.slice(1);
-      const difficult = new Set(board.snapshot.difficult ?? []);
+      const context = movementContext(board.snapshot, mover);
       let cost = 0, split = points.length;
       for (let i = 1; i < option.move.path.length; i++) {
-        const c = option.move.path[i]; cost += difficult.has(`${c.x},${c.y}`) ? 2 : 1;
-        if (cost > mover.speed) { split = i - 1; break; }
+        cost += stepCost(context, option.move.path[i - 1], option.move.path[i]);
+        if (cost > budget.move) { split = i - 1; break; }
       }
       const segments = option.facts.usesBoost ? [points.slice(0, split), points.slice(split)] : [points];
       for (const segment of segments.filter(s => s.length)) {
@@ -92,13 +101,8 @@ export async function executeOption(option, board, choice, { game, canvas, read,
         || current.snapshot.losFrom[`${cell.x},${cell.y}`]?.[id] !== true)) throw Error('Target or line of sight changed. Continue manually.');
     }
     if (option.move || kind === 'attack' || option.facts.usesBoost) {
-      if (option.move) tracker.move = 0;
-      if (kind === 'attack' || option.facts.usesBoost) {
-        if (tracker.full) tracker.full = false; else tracker.quick = false;
-      }
-      tracker.protocol = false;
-      await actor.update({ 'system.action_tracker': tracker });
-      expectedTracker = tracker;
+      await actor.update({ 'system.action_tracker': projected.nativeTracker });
+      expectedTracker = projected.nativeTracker;
     }
     checkBoard();
     if (choice.line) await postLine(choice.line, token);

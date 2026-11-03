@@ -32,6 +32,11 @@ test('catalogue summarizes classes, templates, shapes and crosslinks without raw
   assert.equal(result.features.find(x => x.id === 'trait').hasTrigger, true);
   assert(!JSON.stringify(result).includes('PRIVATE_'));
   assert.equal(result.inventoryOnly, true);
+  assert.equal(result.coverageWork.entries.length, 3);
+  assert.equal(result.coverageWork.owners.length, 2);
+  assert.equal(result.coverageWork.complete, false);
+  assert(result.coverageWork.errors.some(e => e.includes('absent')));
+  assert.equal(result.coverageWork.executable.totals.supported, 0);
 });
 
 test('invalid, missing and wrong-kind crosslinks are reported, including template links', () => {

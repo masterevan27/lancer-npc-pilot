@@ -57,5 +57,5 @@ test('square footprints and footprint distance for size 2', () => {
   assert.equal(footprintDistance(g, { x: 4, y: 5 }, 1, { x: 5, y: 3 }, 2), 1);
   assert.equal(footprintDistance(g, { x: 9, y: 4 }, 1, { x: 5, y: 3 }, 2), 3);
   // hex: always one cell
-  assert.equal(footprint({ type: 'hex' }, { x: 0, y: 0 }, 3).length, 1);
+  assert.throws(() => footprint({ type: 'hex' }, { x: 0, y: 0 }, 3), /native occupied cells/);
 });

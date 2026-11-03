@@ -5,8 +5,10 @@ export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c =>
 
 export function renderReview(review, canExecute) {
   const actor = review.snapshot.tokens.find(t => t.id === review.snapshot.activeTokenId);
+  const budget = review.snapshot.actionBudget;
   return `<section class="npc-pilot-review">
     <h2>${escapeHtml(actor?.name)} — turn proposal</h2>
+    ${budget ? `<p>Movement remaining: ${escapeHtml(budget.move)} · Quick actions remaining: ${escapeHtml(budget.quick)} · Full action available: ${budget.full ? 'yes' : 'no'}<br>Protocol available: ${budget.protocol ? 'yes' : 'no'} · Reaction available: ${budget.reaction ? 'yes' : 'no'}</p>` : ''}
     <p>Choice: <strong>${escapeHtml(review.choice.source)}</strong>. ${escapeHtml(review.choice.reason)}</p>
     ${review.choice.line ? `<blockquote>${escapeHtml(review.choice.line)}</blockquote>` : ''}
     <p>${canExecute ? 'Review the route and targets before approving. Lancer handles all rolls and outcomes.' : 'Execution is disabled. Enable execution and review scene terrain before approving.'}</p>

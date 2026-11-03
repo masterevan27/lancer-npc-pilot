@@ -5,7 +5,7 @@ import fs from 'node:fs';
 
 function setup({ interrupted = false, changed = false } = {}) {
   const calls = [];
-  const actor = { system: { action_tracker: { move: 3, full: true, quick: true } },
+  const actor = { system: { action_tracker: { move: 3, full: true, quick: true, protocol: true, reaction: true } },
     getFlag: () => null, setFlag: async (...v) => calls.push(['flag', ...v]),
     update: async v => calls.push(['budget', v]),
     items: { get: () => ({ beginWeaponAttackFlow: async () => calls.push(['flow']) }) } };
@@ -14,7 +14,7 @@ function setup({ interrupted = false, changed = false } = {}) {
     checkCollision: () => false };
   const board = { turn: 't1', stamp: 'a', guard: 'stable', terrainReviewed: true,
     positions: { '0,0': { x: 0, y: 0 }, '1,0': { x: 100, y: 0 } },
-    snapshot: { activeTokenId: 'npc', tokens: [{ id: 'npc', speed: 3, pos: { x: 0, y: 0 } }, { id: 'pc', hp: [5, 5], pos: { x: 3, y: 0 } }],
+    snapshot: { activeTokenId: 'npc', grid: { type: 'square' }, tokens: [{ id: 'npc', speed: 3, pos: { x: 0, y: 0 } }, { id: 'pc', hp: [5, 5], pos: { x: 3, y: 0 } }],
       losFrom: { '1,0': { pc: true } } } };
   let reads = 0;
   const env = { game: { user: { id: 'gm', isGM: true },

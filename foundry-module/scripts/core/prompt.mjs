@@ -2,7 +2,7 @@
 // Provider-neutral (the relay maps it onto Anthropic or OpenAI-style APIs).
 // No Foundry or browser globals.
 
-import { footprintDistance } from './grid.mjs';
+import { tokenDistance } from './grid.mjs';
 import { areEnemies, isDefeated, rangeVal } from './snapshot.mjs';
 
 export const REASON_MAX_WORDS = 25;
@@ -66,7 +66,7 @@ function weaponLine(w) {
 
 function tokenLine(t, me, grid) {
   const bits = [`${t.name}`, `at ${cell(t.pos)}`];
-  if (me && t.id !== me.id) bits.push(`${footprintDistance(grid, me.pos, me.size, t.pos, t.size)} away`);
+  if (me && t.id !== me.id) bits.push(`${tokenDistance(grid, me, t)} away`);
   bits.push(`HP ${pair(t.hp)}`);
   if (t.structure) bits.push(`structure ${pair(t.structure)}`);
   bits.push(`armor ${t.armor}`, `evasion ${t.evasion}`, `e-def ${t.edef}`, `speed ${t.speed}`, `size ${t.size}`);

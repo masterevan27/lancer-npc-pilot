@@ -30,6 +30,8 @@ function jsonData(value, ancestors = new Set()) {
   return true;
 }
 
+export { jsonData as isJsonData };
+
 /** Validate a declarative descriptor. Extra JSON data stays inert; no code is accepted. */
 export function validateDescriptor(descriptor) {
   const errors = [];

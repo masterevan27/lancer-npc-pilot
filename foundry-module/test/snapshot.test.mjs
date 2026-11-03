@@ -32,7 +32,7 @@ test('validateSnapshot reports missing and invalid fields with paths', () => {
   }
 });
 
-test('validateSnapshot: hex layout checked, missing LOS and big hex tokens warned', () => {
+test('validateSnapshot: hex layout checked, missing LOS warned and unknown large occupancy rejected', () => {
   const snap = loadFixture('hex-map');
   snap.grid.hexLayout = 'diagonal';
   assert.ok(validateSnapshot(snap).errors.some((e) => e.path === 'grid.hexLayout'));
@@ -40,11 +40,11 @@ test('validateSnapshot: hex layout checked, missing LOS and big hex tokens warne
   delete snap.losFrom;
   snap.tokens[1].size = 2;
   const res = validateSnapshot(snap);
-  assert.equal(res.ok, true);
+  assert.equal(res.ok, false);
   const w = res.warnings.map((x) => x.path);
   assert.ok(w.includes('grid.hexLayout'));
   assert.ok(w.includes('losFrom'));
-  assert.ok(w.includes('tokens[1].size'));
+  assert.ok(res.errors.some(e => e.path === 'tokens[1].occupiedCells'));
 });
 
 test('validateSnapshot rejects non-objects and duplicate ids', () => {

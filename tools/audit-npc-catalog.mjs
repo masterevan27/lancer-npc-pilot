@@ -6,6 +6,7 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
+import { buildCoverageManifest, auditMechanicCoverage } from '../foundry-module/scripts/core/coverage.mjs';
 
 const sortById = (a, b) => a.id.localeCompare(b.id);
 const present = value => typeof value === 'string' && value.trim().length > 0;
@@ -90,6 +91,12 @@ export function summarizeCatalog(records) {
   };
   const classes = identified.filter(record => record.type === 'npc_class').map(describeOwner).sort(sortById);
   const templates = identified.filter(record => record.type === 'npc_template').map(describeOwner).sort(sortById);
+  const catalogue = features.map(f => ({ lid: f.id, kind: f.type,
+    sourceFingerprint: f.sourceFingerprint, sourceVersion: f.sourceVersion, tiers: [1, 2, 3] }));
+  const mappedOwners = list => list.map(o => ({ lid: o.id,
+    features: o.features.map(f => ({ lid: f.id, kind: f.kind })) }));
+  const owners = { classes: mappedOwners(classes), templates: mappedOwners(templates) };
+  const coverageWork = auditMechanicCoverage(catalogue, buildCoverageManifest(catalogue, owners), owners);
   return {
     inventoryOnly: true,
     limitations: ['This inventories the selected installed pack, not every published or homebrew NPC.',
@@ -102,7 +109,7 @@ export function summarizeCatalog(records) {
     tags: tally(features.flatMap(feature => feature.tags)),
     effectOnlyCount: features.filter(feature => feature.effectOnly).length,
     proseSignals: tally(features.flatMap(feature => feature.proseSignals)),
-    duplicates, unresolved, classes, templates, features,
+    duplicates, unresolved, classes, templates, features, coverageWork,
   };
 }
 

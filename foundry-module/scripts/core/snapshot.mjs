@@ -3,6 +3,7 @@
 // No Foundry or browser globals. See README.md in this folder.
 
 import { HEX_LAYOUTS, SQUARE_DIAGONALS, parseKey } from './grid.mjs';
+import { canSpend } from './budgets.mjs';
 
 /**
  * @typedef {{x:number, y:number}} Cell  Grid cell, x = column, y = row.
@@ -57,6 +58,9 @@ import { HEX_LAYOUTS, SQUARE_DIAGONALS, parseKey } from './grid.mjs';
  * @property {boolean} [isNpc]
  * @property {Cell} pos               Anchor cell (top-left of the footprint on squares).
  * @property {number} size            LANCER size: 0.5, 1, 2, 3...
+ * @property {Object<string,Cell[]>} [occupiedCells] Exact native cells keyed by hypothetical anchor; missing keys are unavailable.
+ * @property {string[]} [classIds]    Actual native NPC class IDs; metadata does not apply prose mechanics.
+ * @property {string[]} [templateIds]
  * @property {[number,number]} hp     [current, max]
  * @property {[number,number]} [heat]
  * @property {[number,number]} [structure]
@@ -83,6 +87,8 @@ import { HEX_LAYOUTS, SQUARE_DIAGONALS, parseKey } from './grid.mjs';
  * @property {Token[]} tokens
  * @property {string[]} [blocked]       Cells no token can enter ("x,y").
  * @property {string[]} [blockedMoves]  Directed steps a wall blocks: "x1,y1>x2,y2".
+ * @property {string[]} [blockedAnchorMoves] Whole-mover directed blockers, distinct from individual body-cell rays.
+ * @property {object} [actionBudget] Remaining observed/projected pool from budgets.mjs; never an extra full-action resource.
  * @property {string[]} [difficult]     Cells that cost 2 spaces to enter.
  * @property {Object<string,'soft'|'hard'>} [cover]  Directionless cover a token in that cell enjoys.
  * @property {Object<string, Object<string, LosEntry>>} [losFrom]
@@ -198,6 +204,8 @@ export function validateSnapshot(snap) {
   }
 
   if (snap.round !== undefined && !isInt(snap.round)) err('round', 'must be an integer');
+  if (snap.actionBudget !== undefined && !canSpend(snap.actionBudget, {}).ok)
+    err('actionBudget', 'must be a consistent observed/projection budget');
 
   const g = snap.grid;
   if (!g || typeof g !== 'object') {
@@ -240,11 +248,11 @@ export function validateSnapshot(snap) {
     v.forEach((k, i) => { if (!parseKey(k)) err(`${field}[${i}]`, `bad cell key "${k}"`); });
   }
 
-  if (snap.blockedMoves !== undefined) {
-    if (!Array.isArray(snap.blockedMoves)) err('blockedMoves', 'must be an array of "x1,y1>x2,y2" strings');
-    else snap.blockedMoves.forEach((k, i) => {
+  for (const field of ['blockedMoves', 'blockedAnchorMoves']) if (snap[field] !== undefined) {
+    if (!Array.isArray(snap[field])) err(field, 'must be an array of "x1,y1>x2,y2" strings');
+    else snap[field].forEach((k, i) => {
       const parts = String(k).split('>');
-      if (parts.length !== 2 || !parseKey(parts[0]) || !parseKey(parts[1])) err(`blockedMoves[${i}]`, `bad step "${k}"`);
+      if (parts.length !== 2 || !parseKey(parts[0]) || !parseKey(parts[1])) err(`${field}[${i}]`, `bad step "${k}"`);
     });
   }
 
@@ -286,7 +294,21 @@ function validateToken(t, p, grid, ids, err, warn) {
   if (!SIDES.includes(t.side)) err(`${p}.side`, `must be one of ${SIDES.join(', ')}`);
   if (!t.pos || !isInt(t.pos.x) || !isInt(t.pos.y)) err(`${p}.pos`, 'must be {x, y} integers (grid cells)');
   if (!isNum(t.size) || t.size <= 0) err(`${p}.size`, 'must be a positive number');
-  else if (grid && grid.type === 'hex' && t.size > 1) warn(`${p}.size`, 'hex footprints are treated as a single cell');
+  else if (grid && grid.type === 'hex' && t.size > 1 && t.occupiedCells === undefined)
+    err(`${p}.occupiedCells`, 'large hex tokens require exact native occupied cells');
+  if (t.occupiedCells !== undefined) {
+    const map = t.occupiedCells;
+    if (!map || typeof map !== 'object' || Array.isArray(map) || !map[`${t.pos?.x},${t.pos?.y}`])
+      err(`${p}.occupiedCells`, 'must include native cells at the current anchor');
+    else for (const [key, cells] of Object.entries(map)) {
+      const anchor = parseKey(key);
+      if (!anchor || !Array.isArray(cells) || cells.length === 0 || cells.length > 256
+        || Array.from(cells).some(c => !c || !isInt(c.x) || !isInt(c.y))
+        || new Set(cells.map(c => `${c?.x},${c?.y}`)).size !== cells.length
+        || cells[0]?.x !== anchor.x || cells[0]?.y !== anchor.y)
+        err(`${p}.occupiedCells.${key}`, 'must contain distinct native cells, beginning at the declared anchor');
+    }
+  }
   if (!isPair(t.hp)) err(`${p}.hp`, 'must be [current, max]');
   for (const k of ['heat', 'structure', 'stress']) {
     if (t[k] !== undefined && !isPair(t[k])) err(`${p}.${k}`, 'must be [current, max]');

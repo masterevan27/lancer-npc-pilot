@@ -112,12 +112,13 @@ export function cellDistance(grid, a, b) {
 /**
  * Side length in cells of a token's square footprint. LANCER sizes 1/2 and 1
  * take one cell, size 2 a 2x2 block, size 3 a 3x3 block, and so on.
- * LIMITATION: on hex grids every token is treated as a single cell (its
- * anchor `pos`); multi-hex footprints are not modelled. validateSnapshot
- * warns about this.
+ * Large hex tokens require tokenFootprint's exact native per-anchor cells.
  */
 export function footprintSide(grid, size) {
-  if (grid.type === 'hex') return 1;
+  if (grid.type === 'hex') {
+    if (size > 1) throw Error('Large hex tokens require native occupied cells.');
+    return 1;
+  }
   return Math.max(1, Math.ceil(Number(size) || 1));
 }
 
@@ -144,6 +145,27 @@ export function footprintDistance(grid, posA, sizeA, posB, sizeB) {
     }
   }
   return best;
+}
+
+/** Native per-anchor occupancy wins; a missing native candidate is unavailable. */
+export function tokenFootprint(grid, token, pos = token.pos) {
+  if (token.occupiedCells !== undefined) return token.occupiedCells[cellKey(pos)] ?? [];
+  if (grid.type === 'hex' && token.size > 1) throw Error('Large hex tokens require native occupied cells.');
+  return footprint(grid, pos, token.size);
+}
+
+export function tokenDistance(grid, a, b, posA = a.pos, posB = b.pos) {
+  let best = Infinity;
+  for (const ca of tokenFootprint(grid, a, posA)) for (const cb of tokenFootprint(grid, b, posB))
+    best = Math.min(best, cellDistance(grid, ca, cb));
+  return best;
+}
+
+/** Translate a body cell by an anchor's grid vector, preserving hex parity. */
+export function translateCell(grid, cell, from, to) {
+  if (grid.type !== 'hex') return { x: cell.x + to.x - from.x, y: cell.y + to.y - from.y };
+  const layout = layoutOf(grid), c = offsetToAxial(cell, layout), a = offsetToAxial(from, layout), b = offsetToAxial(to, layout);
+  return axialToOffset({ q: c.q + b.q - a.q, r: c.r + b.r - a.r }, layout);
 }
 
 /** True when the cell lies inside optional grid bounds (width/height in cells). */

@@ -13,13 +13,12 @@
 //     neutral tokens block movement (RULE? neutral = obstruction).
 //   - Defeated tokens are ignored; the adapter puts wreck cells in `blocked`
 //     if wrecks should obstruct.
-//   - Size: on square grids the mover's whole n x n footprint must fit every
-//     cell it passes through. On hex grids every token is one cell (the
-//     anchor); multi-hex footprints are a documented limitation.
+//   - Native per-anchor occupied cells govern every body cell. Large hex
+//     tokens without native cells are refused, never approximated.
 //   - Not modelled: engagement, Disengage, reactions (Overwatch) on the way,
 //     elevation, flying, teleporting, being pushed.
 
-import { cellKey, footprint, inBounds, neighbors, parseKey } from './grid.mjs';
+import { cellKey, tokenFootprint, translateCell, inBounds, neighbors, parseKey } from './grid.mjs';
 import { areEnemies, isDefeated } from './snapshot.mjs';
 
 /**
@@ -39,18 +38,20 @@ export function movementContext(snap, mover) {
     const kind = t.side === 'neutral' || mover.side === 'neutral'
       ? 'neutral'
       : areEnemies(mover, t) ? 'enemy' : 'ally';
-    for (const c of footprint(grid, t.pos, t.size)) {
+    for (const c of tokenFootprint(grid, t)) {
       const k = cellKey(c);
       // An enemy/neutral claim wins over an ally claim for passability.
       if (!occupied.has(k) || kind !== 'ally') occupied.set(k, kind);
     }
   }
-  return { grid, blocked, blockedMoves, difficult, occupied, size: mover.size };
+  return { grid, blocked, blockedMoves, blockedAnchorMoves: new Set(snap.blockedAnchorMoves ?? []), difficult, occupied, size: mover.size, mover };
 }
 
 /** Can the mover's footprint stand on (pass through) anchor `c`? */
 export function canPass(ctx, c) {
-  for (const f of footprint(ctx.grid, c, ctx.size)) {
+  const cells = tokenFootprint(ctx.grid, ctx.mover, c);
+  if (!cells.length) return false;
+  for (const f of cells) {
     if (!inBounds(ctx.grid, f)) return false;
     const k = cellKey(f);
     if (ctx.blocked.has(k)) return false;
@@ -63,7 +64,7 @@ export function canPass(ctx, c) {
 /** Can the mover end its movement with its anchor on `c`? */
 export function canEnd(ctx, c) {
   if (!canPass(ctx, c)) return false;
-  for (const f of footprint(ctx.grid, c, ctx.size)) {
+  for (const f of tokenFootprint(ctx.grid, ctx.mover, c)) {
     if (ctx.occupied.has(cellKey(f))) return false;
   }
   return true;
@@ -71,12 +72,13 @@ export function canEnd(ctx, c) {
 
 /** Cost of stepping from anchor a to adjacent anchor b, or null if illegal. */
 export function stepCost(ctx, a, b) {
+  if (ctx.blockedAnchorMoves.has(`${cellKey(a)}>${cellKey(b)}`)) return null;
   if (!canPass(ctx, b)) return null;
   const dx = b.x - a.x;
   const dy = b.y - a.y;
-  const fromCells = footprint(ctx.grid, a, ctx.size);
+  const fromCells = tokenFootprint(ctx.grid, ctx.mover, a);
   for (const f of fromCells) {
-    const to = { x: f.x + dx, y: f.y + dy };
+    const to = translateCell(ctx.grid, f, a, b);
     if (ctx.blockedMoves.has(`${cellKey(f)}>${cellKey(to)}`)) return null;
   }
   if (ctx.grid.type === 'square' && dx !== 0 && dy !== 0) {
@@ -88,10 +90,27 @@ export function stepCost(ctx, a, b) {
     }
   }
   let cost = 1;
-  for (const f of footprint(ctx.grid, b, ctx.size)) {
+  for (const f of tokenFootprint(ctx.grid, ctx.mover, b)) {
     if (ctx.difficult.has(cellKey(f))) { cost = 2; break; }
   }
   return cost;
+}
+
+/** Exact approved route cost, including every occupied cell and directed step. */
+export function pathCost(snap, tokenId, path) {
+  const mover = snap.tokens.find(t => t.id === tokenId);
+  if (!mover || !Array.isArray(path) || path.length === 0
+    || path[0]?.x !== mover.pos.x || path[0]?.y !== mover.pos.y) return null;
+  const ctx = movementContext(snap, mover);
+  let total = 0;
+  for (let i = 1; i < path.length; i++) {
+    const a = path[i - 1], b = path[i];
+    if (!b || !neighbors(snap.grid, a).some(c => c.x === b.x && c.y === b.y)) return null;
+    const cost = stepCost(ctx, a, b);
+    if (cost === null) return null;
+    total += cost;
+  }
+  return canEnd(ctx, path.at(-1)) ? total : null;
 }
 
 /**
