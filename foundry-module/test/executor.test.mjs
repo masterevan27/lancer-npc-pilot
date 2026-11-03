@@ -17,8 +17,8 @@ function setup({ interrupted = false, changed = false } = {}) {
     snapshot: { activeTokenId: 'npc', tokens: [{ id: 'npc', speed: 3, pos: { x: 0, y: 0 } }, { id: 'pc', hp: [5, 5], pos: { x: 3, y: 0 } }],
       losFrom: { '1,0': { pc: true } } } };
   let reads = 0;
-  const env = { game: { user: { id: 'gm', isGM: true, updateTokenTargets: async ids => calls.push(['targets', ids]) },
-    users: { activeGM: { id: 'gm' } } }, canvas: { tokens: { get: () => token },
+  const env = { game: { user: { id: 'gm', isGM: true },
+    users: { activeGM: { id: 'gm' } } }, canvas: { tokens: { get: () => token, setTargets: async ids => calls.push(['targets', ids]) },
     grid: { getTopLeftPoint: ({ i, j }) => ({ x: j * 100, y: i * 100 }) } },
     read: () => { reads++; return { ...board, guard: changed && reads > 1 ? 'changed' : 'stable' }; },
     withLock: async (_key, fn) => fn(), postLine: async line => calls.push(['line', line]) };
@@ -50,6 +50,9 @@ test('secondary GMs, already reserved turns and changed initial board produce no
 });
 
 test('missing attack flow is caught before moving and hold never changes targets or starts a flow', async () => {
+  const missingTargets = setup(); missingTargets.env.canvas.tokens.setTargets = undefined;
+  await assert.rejects(executeOption(missingTargets.option, missingTargets.board, {}, missingTargets.env));
+  assert.equal(missingTargets.calls.length, 0);
   const s = setup(); s.token.actor.items.get = () => undefined;
   await assert.rejects(executeOption(s.option, s.board, {}, s.env)); assert.equal(s.calls.length, 0);
   const h = setup(); h.option.move = null; h.option.action = { kind: 'hold' };
@@ -63,7 +66,7 @@ test('changes across action-budget, chat and targeting awaits cannot start a sta
     s.env.read = () => ({ ...s.board, guard });
     if (stage === 'budget') s.token.actor.update = async () => { guard = 'changed'; };
     if (stage === 'chat') s.env.postLine = async () => { guard = 'changed'; };
-    if (stage === 'targets') s.env.game.user.updateTokenTargets = async () => { guard = 'changed'; };
+    if (stage === 'targets') s.env.canvas.tokens.setTargets = async () => { guard = 'changed'; };
     await assert.rejects(executeOption(s.option, s.board, { line: 'Advance' }, s.env));
     assert(!s.calls.some(c => c[0] === 'flow'));
   }
@@ -75,7 +78,7 @@ test('moving the active NPC during budget, chat or target awaits cannot bypass t
     const move = async () => { s.token.document.x = 700; };
     if (stage === 'budget') s.token.actor.update = move;
     if (stage === 'chat') s.env.postLine = move;
-    if (stage === 'targets') s.env.game.user.updateTokenTargets = move;
+    if (stage === 'targets') s.env.canvas.tokens.setTargets = move;
     await assert.rejects(executeOption(s.option, s.board, { line: 'Advance' }, s.env));
     assert(!s.calls.some(c => c[0] === 'flow'));
   }

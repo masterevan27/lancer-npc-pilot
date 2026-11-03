@@ -27,7 +27,7 @@ sources:
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-02T03:18:00Z
+  at: 2026-11-03T00:21:00Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -134,6 +134,11 @@ tokens, start combat or link a scene automatically.
   AP, Overkill and self-heat. Unloaded, destroyed, spent Limited and uncharged Recharge
   weapons are unavailable. The live system resolves the actor tier.
   Each excluded NPC weapon is named with its reason in the proposal warnings.
+  Nonweapon NPC features on every scene token are also named in proposal warnings,
+  including passive traits, reactions, tech and systems. These conservative warnings
+  identify the remaining implementation chunk and verification gates; unknown kinds
+  stay manual. Native-derived stats remain in use, but warnings do not establish
+  that additional passive restrictions or effects have been implemented.
   A separate warning explains when no usable supported weapon remains; movement
   choices do not establish that the NPC has no weapons.
 - Stunned, Immobilized, Slowed and Impaired are represented by the inherited
@@ -258,6 +263,25 @@ Before using execution in a campaign, verify in a disposable staged scene:
 These broad boxes remain open until every listed subcheck is individually
 observed. The earlier square-scene observations are scoped evidence, not complete
 acceptance. No paid inference has been used; campaign execution remains disabled.
+
+## Scoped development 0.5.0 live checks (2026-11-02)
+
+A source deployment in the disposable copied world verified a complete eight-space
+odd-row hex move, ending with move 0 and both attack actions still available.
+Reviewed T1 Ram Cannon melee reached the native Lancer attack HUD with the approved
+target; cancelling it produced no roll or damage and retained conservative action
+spending. Execution and turn prompts were disabled after testing.
+
+The fixes retain registered Lancer Automations flow steps before initialization,
+use Foundry v13 `canvas.tokens.setTargets`, and exclude only the moving token's
+known movement-history/facing caches and artwork mirror signs from the execution
+guard. Positions, scale magnitudes, images, other flags and target data stay guarded.
+These checks used a local 8B model after the 20B model twice exceeded the 120-second
+relay limit. They do not close the broad acceptance boxes above: Boost, other hex
+layouts in live play, interruption/stale/concurrent-client cases, paid-provider
+acceptance and Uplink coexistence remain open. The development source has not been
+published as a release.
+See the [scoped evidence and remaining gates](review-evidence/2026-11-02-execution-acceptance.md).
 
 ## Full NPC coverage work
 

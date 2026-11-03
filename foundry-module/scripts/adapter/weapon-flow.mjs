@@ -10,8 +10,10 @@ export function prepareModeFlow(item, actor, mode, game) {
     || !reviewedRamCannon(item, actor.system.tier)
     || !readNpcWeapons(actor).weapons.some(w => w.itemId === item.id && w.mode === mode)
     || typeof Flow !== 'function' || typeof Flow.prototype.getStep !== 'function'
-    || typeof Flow.prototype.begin !== 'function' || Flow.steps?.[0] !== 'initAttackData'
-    || !Flow.steps.includes('showAttackHUD') || !Flow.steps.includes('rollAttacks'))
+    || typeof Flow.prototype.begin !== 'function' || !Array.isArray(Flow.steps)
+    || Flow.steps.filter(s => s === 'initAttackData').length !== 1
+    || Flow.steps.indexOf('showAttackHUD') <= Flow.steps.indexOf('initAttackData')
+    || Flow.steps.indexOf('rollAttacks') <= Flow.steps.indexOf('showAttackHUD'))
     throw Error('This weapon mode needs reviewed Lancer 3.1.3 flow support. Continue manually.');
   const flow = new Flow(item);
   const getStep = flow.getStep.bind(flow);

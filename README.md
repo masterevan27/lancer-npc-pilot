@@ -7,10 +7,10 @@ Anthropic API or a local model through Ollama, picks one in character. The GM
 approves it, and Foundry and the Lancer system roll the dice.
 
 <!-- doc-media TODO: purpose: show the GM review dialog on a live NPC turn;
-acceptance: sanitized real screenshot from a staged hex NPC turn at version 0.3.0;
-blocker: hex-grid source has not yet completed live acceptance; existing 0.2.0 capture does not demonstrate hex planning. -->
+acceptance: sanitized real screenshot from the development 0.5.0 staged hex review;
+blocker: current review capture has not been saved and sanitized for tracking; scoped hex movement/HUD checks passed, but broader acceptance remains open. -->
 
-Status: 0.4.1 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
+Status: development 0.5.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
 The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn

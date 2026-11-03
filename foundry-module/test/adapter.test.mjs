@@ -49,6 +49,39 @@ export function environment() {
   return { game, canvas, constants: { GRID_TYPES: { SQUARE: 1 }, GRID_DIAGONALS: { EQUIDISTANT: 1 } } };
 }
 
+test('review warnings account for active and target nonweapon features without granting support', () => {
+  const env = environment();
+  for (const [index, kind] of ['Trait', 'Reaction', 'Tech', 'System', 'Unknown'].entries()) {
+    env.canvas.tokens.placeables[index % 2].actor.items.push({ id: `f${index}`,
+      name: `Feature ${index}`, type: 'npc_feature', system: { type: kind } });
+  }
+  const result = extractSnapshot(env);
+  for (let i = 0; i < 5; i++) assert(result.warnings.some(w => w.includes(`Feature ${i}`) && w.includes('manual')));
+  assert(result.warnings.some(w => w.includes('passive') && w.includes('Chunk 6')));
+  assert(result.warnings.some(w => w.includes('Chunk 7')));
+  assert(result.warnings.some(w => w.includes('Chunk 5')));
+  assert.equal(result.snapshot.tokens[0].weapons.length, 1);
+});
+
+test('active token movement bookkeeping does not stale execution but other flags do', () => {
+  const env = environment(), token = env.canvas.tokens.placeables[0];
+  const flags = { 'lancer-automations': { moveHistory: [1] }, 'about-face': { prevPos: { x: 100, y: 100 } } };
+  const original = token.document.toObject.bind(token.document);
+  let scaleX = 1;
+  token.document.toObject = () => ({ ...original(), flags: structuredClone(flags), texture: { scaleX, scaleY: 1 } });
+  const before = extractSnapshot(env);
+  flags['lancer-automations'].moveHistory.push(2); flags['about-face'].prevPos.x = 200;
+  flags['about-face'].direction = 60;
+  scaleX = -1;
+  assert.equal(extractSnapshot(env).guard, before.guard);
+  assert.notEqual(extractSnapshot(env).stamp, before.stamp);
+  scaleX = 2;
+  assert.notEqual(extractSnapshot(env).guard, before.guard);
+  scaleX = 1;
+  flags['lancer-automations'].unrelated = true;
+  assert.notEqual(extractSnapshot(env).guard, before.guard);
+});
+
 test('Lancer adapter reads resolved tier profile, tag lid, limited uses, statuses and persona', () => {
   const env = environment(); const t = env.canvas.tokens.placeables[0];
   t.actor.statuses.add('impaired'); t.actor.getFlag = () => 'Berserker';
@@ -144,7 +177,7 @@ test('Hidden enemies cannot be attacked and entering engagement stops further mo
 test('real adapter guard permits its own reservation and v13 movement history but detects other changes', async () => {
   const env = environment(); const active = env.canvas.tokens.placeables[0];
   env.game.user.id = 'gm'; env.game.users = { activeGM: { id: 'gm' } };
-  env.game.user.updateTokenTargets = async () => {};
+  env.canvas.tokens.setTargets = async () => {};
   env.canvas.scene.flags.terrain = { reviewed: true };
   active.document.delta = { _id: 'synthetic', system: {}, flags: {} };
   const originalObject = active.document.toObject.bind(active.document);

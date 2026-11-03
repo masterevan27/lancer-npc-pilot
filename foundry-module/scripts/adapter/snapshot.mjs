@@ -9,6 +9,24 @@ const ACTIVE_STATUSES = new Set(['IMPAIRED', 'IMMOBILIZED', 'SLOWED', 'STUNNED',
 const pair = value => [Number(value?.value), Number(value?.max)];
 const number = value => Number(value);
 const plain = value => JSON.parse(JSON.stringify(value));
+
+// Coverage explanations only. Native-derived stats are already read above;
+// these warnings must never apply prose effects or grant executable handlers.
+function featureWarnings(tokens) {
+  return tokens.flatMap(token => [...(token.actor.items ?? [])]
+    .filter(item => item.type === 'npc_feature' && item.system?.type !== 'Weapon')
+    .map(item => {
+      const kind = item.system?.type;
+      const gap = kind === 'Trait'
+        ? 'Unreviewed passive restrictions/effects require manual verification; native-derived stats are retained. Chunk 6: modifiers, timing and template interaction tests.'
+        : kind === 'Reaction'
+          ? 'Reaction requires manual resolution. Chunk 7: verified triggers, availability and interruption receipts.'
+          : ['Tech', 'System'].includes(kind)
+            ? 'Ability requires manual resolution. Chunk 5: native results, targeting, saves, resources and effect tests; Chunk 3: confirmed continuation.'
+            : 'Unknown feature kind requires manual review. Chunk 1: reviewed classification and exact-source descriptor; later mechanic gates remain unresolved.';
+      return `${token.name ?? token.id} — ${item.name ?? item.id ?? 'Unnamed feature'} (${kind ?? 'unknown'}): ${gap}`;
+    }));
+}
 function stripOwnActorChanges(actor) {
   delete actor._stats;
   if (actor.flags?.[MODULE_ID]) delete actor.flags[MODULE_ID].lastExecution;
@@ -120,6 +138,19 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     const token = plain(t.document.toObject()), actor = plain(t.actor.toObject());
     if (t.id === active.id) {
       delete token.x; delete token.y; delete token._stats; delete token._movementHistory;
+      // These installed modules update bookkeeping during native movement.
+      // Keep every other flag, and every target token, in the execution guard.
+      for (const [namespace, field] of [['lancer-automations', 'moveHistory'], ['about-face', 'prevPos'], ['about-face', 'direction']]) {
+        if (token.flags?.[namespace]) {
+          delete token.flags[namespace][field];
+          if (!Object.keys(token.flags[namespace]).length) delete token.flags[namespace];
+        }
+      }
+      if (token.flags && !Object.keys(token.flags).length) delete token.flags;
+      // About Face mirrors artwork on movement; magnitudes and image stay guarded.
+      for (const axis of ['scaleX', 'scaleY']) {
+        if (Number.isFinite(token.texture?.[axis])) token.texture[axis] = Math.abs(token.texture[axis]);
+      }
       stripOwnActorChanges(actor);
       // Unlinked token actors persist the same changes in ActorDelta too.
       if (token.delta) stripOwnActorChanges(token.delta);
@@ -134,6 +165,7 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
       tokens: tokens.map(t => ({ token: t.document.toObject(), actor: t.actor.toObject() })), snapshot }),
     terrainReviewed: terrain.reviewed === true,
     warnings: [...mover.excludedWeapons.map(w => `${w.name}: ${w.reason}`),
+      ...featureWarnings(tokens),
       ...(!mover.weapons.length ? ['This NPC has no usable supported weapons. Attacks are unavailable; play excluded weapons manually.'] : []),
       'Scoring approximates cover, engagement and special traits; verify the Lancer attack HUD.',
       'Resolve reactions manually along the proposed path. Hide and special targeting are excluded.',

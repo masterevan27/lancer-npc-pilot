@@ -36,9 +36,11 @@ test('reviewed modes retain installed Lancer initialization, tier accuracy and a
       is_npc_feature: () => true, currentProfile: nativeProfile };
     actor.items = [item];
     class WeaponAttackFlow {
-      static steps = ['initAttackData', 'showAttackHUD', 'rollAttacks'];
+      // Lancer Automations inserts a reviewed choice hook before native init.
+      static steps = ['lancer-automations:throwChoice', 'initAttackData', 'showAttackHUD', 'rollAttacks'];
       constructor(item) { this.state = { actor, item, data: {} }; }
-      getStep(name) { return name === 'initAttackData' ? nativeInit : async state => {
+      getStep(name) { if (name === 'lancer-automations:throwChoice') return async () => true;
+        return name === 'initAttackData' ? nativeInit : async state => {
         assert.equal(state.data.acc_diff.weapon.melee, mode === 'melee'); return true;
       }; }
       async begin() { for (const step of this.constructor.steps) if (await this.getStep(step)(this.state) === false) return false; return true; }

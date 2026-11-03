@@ -1,6 +1,19 @@
 import { MODULE_ID } from './snapshot.mjs';
 import { prepareModeFlow } from './weapon-flow.mjs';
 
+/** Diagnose stale guards using field paths only; never log document values. */
+export function changedGuardPaths(before, after) {
+  const paths = [];
+  const walk = (a, b, path) => {
+    if (paths.length >= 8 || JSON.stringify(a) === JSON.stringify(b)) return;
+    if (a && b && typeof a === 'object' && typeof b === 'object') {
+      for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) walk(a[key], b[key], `${path}.${key}`);
+    } else paths.push(path);
+  };
+  walk(JSON.parse(before), JSON.parse(after), 'board');
+  return paths;
+}
+
 export function isResponsibleGM(game) {
   return game.user?.isGM === true && game.users.activeGM?.id === game.user.id;
 }
@@ -18,6 +31,7 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (!['attack', 'boost', 'retreat', 'hold'].includes(kind)) throw Error('Unsupported action.');
     const item = kind === 'attack' ? actor.items.get(option.action.itemId) : null;
     if (kind === 'attack' && typeof item?.beginWeaponAttackFlow !== 'function') throw Error('The selected Lancer weapon flow is unavailable.');
+    if (kind === 'attack' && typeof canvas.tokens.setTargets !== 'function') throw Error('Foundry v13 targeting API is unavailable.');
     const modeFlow = kind === 'attack' && option.action.mode
       ? prepareModeFlow(item, actor, option.action.mode, game) : null;
     if (option.move && typeof token.document.move !== 'function') throw Error('Foundry v13 movement API is unavailable.');
@@ -43,7 +57,8 @@ export async function executeOption(option, board, choice, { game, canvas, read,
       const current = read({ expectedTracker });
       if (token.document.x !== expectedPosition.x || token.document.y !== expectedPosition.y)
         throw Error('The NPC moved away from the approved position. Continue manually.');
-      if (current.turn !== board.turn || current.guard !== board.guard) throw Error('The board changed during execution. Continue manually.');
+      if (current.turn !== board.turn || current.guard !== board.guard)
+        throw Error(`The board changed during execution. Continue manually. Changed fields: ${changedGuardPaths(board.guard, current.guard).join(', ')}`);
       return current;
     };
     checkBoard();
@@ -89,7 +104,7 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (choice.line) await postLine(choice.line, token);
     checkBoard();
     if (kind === 'attack') {
-      await game.user.updateTokenTargets(option.action.targetTokenIds);
+      await canvas.tokens.setTargets(option.action.targetTokenIds, { mode: 'replace' });
       checkBoard();
       if (modeFlow) await modeFlow.begin();
       else await item.beginWeaponAttackFlow();
