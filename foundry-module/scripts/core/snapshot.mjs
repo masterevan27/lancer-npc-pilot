@@ -88,6 +88,7 @@ import { canSpend } from './budgets.mjs';
  * @property {string[]} [blocked]       Cells no token can enter ("x,y").
  * @property {string[]} [blockedMoves]  Directed steps a wall blocks: "x1,y1>x2,y2".
  * @property {string[]} [blockedAnchorMoves] Whole-mover directed blockers, distinct from individual body-cell rays.
+ * @property {string[]} [engagementMoves] Directed engagement stops, independent of immutable wall collisions.
  * @property {object} [actionBudget] Remaining observed/projected pool from budgets.mjs; never an extra full-action resource.
  * @property {string[]} [difficult]     Cells that cost 2 spaces to enter.
  * @property {Object<string,'soft'|'hard'>} [cover]  Directionless cover a token in that cell enjoys.
@@ -248,7 +249,7 @@ export function validateSnapshot(snap) {
     v.forEach((k, i) => { if (!parseKey(k)) err(`${field}[${i}]`, `bad cell key "${k}"`); });
   }
 
-  for (const field of ['blockedMoves', 'blockedAnchorMoves']) if (snap[field] !== undefined) {
+  for (const field of ['blockedMoves', 'blockedAnchorMoves', 'engagementMoves']) if (snap[field] !== undefined) {
     if (!Array.isArray(snap[field])) err(field, 'must be an array of "x1,y1>x2,y2" strings');
     else snap[field].forEach((k, i) => {
       const parts = String(k).split('>');

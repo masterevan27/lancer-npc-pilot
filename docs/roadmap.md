@@ -12,9 +12,9 @@ sources:
   - id: execution-evidence
     resource: review-evidence/2026-11-02-execution-acceptance.md
   - id: current-selector
-    resource: https://github.com/masterevan27/lancer-npc-pilot/blob/dc6f3b90d2ae03fdce3a5bd09ed21b999628ca46/foundry-module/scripts/core/options.mjs
+    resource: ../foundry-module/scripts/core/options.mjs
   - id: descriptor-registry
-    resource: https://github.com/masterevan27/lancer-npc-pilot/blob/dc6f3b90d2ae03fdce3a5bd09ed21b999628ca46/foundry-module/scripts/rules/npc-descriptors.mjs
+    resource: ../foundry-module/scripts/rules/npc-descriptors.mjs
   - id: policy-contract
     resource: superpowers/specs/2026-11-03-npc-policy-contract-design.md
   - id: selector-runtime
@@ -23,9 +23,15 @@ sources:
     resource: review-evidence/2026-11-03-policy-selector.md
   - id: selector-plan
     resource: superpowers/plans/2026-11-03-policy-selector.md
+  - id: policy-acceptance
+    resource: review-evidence/2026-11-03-policy-acceptance.md
+  - id: cataphract-implementation
+    resource: review-evidence/2026-11-03-cataphract-implementation.md
+  - id: cataphract-native
+    resource: review-evidence/2026-11-03-cataphract-native-acceptance.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-03T08:49:09.295Z
+  at: 2026-11-04T02:11:23.365Z
 ---
 # NPC mechanics and tactical behavior roadmap
 
@@ -34,16 +40,16 @@ the books' class roles and TACTICS sections as the basis for module decisions.
 The planned direction is a module that can choose supported legal plans from
 class policies without a model connection. Optional LLM assistance can add
 intent interpretation or characterization after its value is evaluated.
-The default branch baseline uses the model selector. Development 0.8.0 on
-`codex/tactical-roadmap` now adds the opt-in module selector described below;
-local source delivery and live acceptance remain separate.
+Development 0.8.0 is locally landed on `main` at `9b0a5df` and adds the opt-in
+module selector described below. Model mode remains the default. Local source
+delivery, scoped runtime checks and human acceptance remain separate.
 
 This roadmap carries forward the [full NPC coverage plan](superpowers/plans/2026-11-01-full-npc-coverage.md).
 It adds tactical behavior requirements without replacing that plan's mechanics
 contracts, review limits or unfinished acceptance gates. Roadmap status is
 implementation progress, separate from source landing and human acceptance.
 
-## Verified baseline
+## Historical audit baseline — development 0.7.0
 
 Audit baseline: local default branch `main`, development 0.7.0 at
 `dc6f3b90d2ae03fdce3a5bd09ed21b999628ca46`. Local `origin/main` is one commit
@@ -86,7 +92,9 @@ Acceptance: preserve every installed feature/tier/owner and source fingerprint;
 resolve or explicitly retain all source ambiguities; allow execution only
 through reviewed, version-bound descriptors. Classification and diagnostic
 coverage alone must never satisfy executable coverage. Existing inventory,
-resolver and diagnostics are partial evidence; the executable registry is empty.
+resolver and diagnostics are partial evidence; the generic executable registry
+is empty. The separately fingerprinted 0.9.0 Cataphract policy path does not
+grant catalogue-wide dispatch or complete this card.
 
 ### mechanics-legality: Complete feature legality, footprints and budgets
 
@@ -180,7 +188,8 @@ Agree Cataphract scenario expectations before implementing its selector.
 
 ### tactics-selector: Module-only planning and explainable selection
 
-Status: active; 0.8.0 implementation complete, live acceptance pending.
+Status: active; 0.8.0 implementation and scoped ordinary live checks complete;
+GM tactical-quality acceptance remains open.
 Depends on tactics-contract and supported candidate mechanics.
 
 The [selector implementation plan](superpowers/plans/2026-11-03-policy-selector.md)
@@ -189,8 +198,12 @@ Development 0.8.0 implements this selector in the existing tactical-roadmap
 worktree: closed policies, deterministic pre-pruning evaluation and disconnected
 GM review with source/configuration guards. [Scoped evidence](review-evidence/2026-11-03-policy-selector.md)
 records tests, the selected REQ-7 diagnostic fix and local source delivery.
-Live policy-mode UI/native execution has not been checked. The Cataphract special
-mechanics and later order editor remain separate gates.
+The [disposable-world pass](review-evidence/2026-11-03-policy-acceptance.md)
+now records disconnected policy UI, cancellation, changed board/binding/source
+refusals and approved ordinary movement/Ram Cannon native handoff. The owner
+supplied a real role-2 player diagnostic with no Pilot API and an Alt+P no-op.
+GM tactical-quality acceptance remains open.
+The Cataphract special mechanics and later order editor remain separate gates.
 
 Acceptance: apply policy priorities during candidate generation and pruning,
 then rank/select using the same policy. A defining maneuver must not disappear
@@ -201,8 +214,22 @@ executable handlers or silently substitute a generic profile for missing support
 
 ### tactics-cataphract: Complete T1 base Cataphract behavior slice
 
-Status: planned. Depends on tactics-contract, tactics-selector and the relevant
-source, legality, sequence, effect and passive mechanics gates.
+Status: blocked on native integration acceptance. Development 0.9.0 source adds
+Trample/Impale, standalone grapple lifecycle and Shield application in this
+worktree. The final source suite passes 625 tests, none failed or skipped;
+[implementation evidence](review-evidence/2026-11-03-cataphract-implementation.md).
+The [native continuation](review-evidence/2026-11-03-cataphract-native-acceptance.md#source-continuation-after-restoration)
+passed both Impale save branches, Shield HP/Heat and replay refusal, immediate
+first-turn control, paired movement and escape cancellation/completion. Foundry's
+source shim, deferred turn/ruler updates, native no-op updates and movement
+animation completion now have scoped corrections and regressions. Automations
+coexistence remains unsupported: special/paired movement and Shield fail closed
+before mutation. Exact original 0.8.0 module/world/config restoration passed;
+campaign hashes matched. Remaining native variants, unknown target interactions
+and human tactical-quality review stay open. This card is not complete. The
+development source is included in an authorized partial local landing;
+[landing scope and checks](review-evidence/2026-11-03-cataphract-landing.md).
+Depends on tactics-contract, tactics-selector and relevant shared mechanics gates.
 
 Acceptance: implement T1 base Ram Cannon, Trample, Impale and Point-Defense
 Shield together with their tactical implications. Compare penetration routes,
@@ -266,18 +293,21 @@ unfinished roster is complete.
 
 ## Delivery order and verification
 
-The approved contract and 0.8.0 selector implementation are now in the local
-source milestone. Next, separately authorize a disposable-world acceptance pass:
-disconnected policy preview with no secret prompt, GM/player separation,
-Skip/Manual/configuration controls, changed-source/configuration refusal, and
-approved ordinary movement/Ram Cannon native flow handoff. Capture a real policy
-review screenshot during that pass. This verifies the current ordinary slice; it
-does not establish Trample, Impale or passive shield support.
+The approved contract and 0.8.0 selector implementation are locally landed.
+The owner authorized the disposable-world pass on November 3. Its
+[scoped evidence and real policy screenshot](review-evidence/2026-11-03-policy-acceptance.md)
+cover disconnected no-secret review, Skip/Manual/configuration controls,
+changed board/binding/source refusals, the real player-client boundary and
+ordinary movement/Ram Cannon native handoff. This completes the scoped first
+acceptance milestone; GM tactical-quality review remains separate. The ordinary
+slice does not establish Trample, Impale or passive shield support.
 
-Next implementation priority is the complete T1 base Cataphract: resolve the
-remaining exact-source and feature-legality questions, add native-confirmed
-ordered continuation for Impale, reviewed Trample movement and shield facts,
-then prove their interactions in a disposable world. Add the structured GM order
+The retained 0.9.0 Cataphract source has scoped native save, carry, Shield,
+control, paired-movement and escape passes. The next gates are ownership-safe
+Automations coexistence, the remaining native variants listed in the
+[acceptance record](review-evidence/2026-11-03-cataphract-native-acceptance.md#source-continuation-after-restoration),
+and tactical-quality review. Unknown target
+passives remain explicit manual cases. Add the structured GM order
 and tendency editor after the selector baseline is accepted. Complete the T1
 base slice before expanding to other tiers, optional systems, templates and
 contrasting class policies. The pilot need not wait for unrelated classes'

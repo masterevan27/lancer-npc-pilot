@@ -24,6 +24,16 @@ test('Execute is absent when disabled and default dialog action is Skip', async 
   assert(config.buttons.some(b => b.action === 'reask'));
 });
 
+test('Impale review discloses native save, Full/recharge costs and complete conditional target route before approval',()=>{
+ const review={snapshot:{activeTokenId:'npc',tokens:[{id:'npc',name:'Cataphract'},{id:'pc',name:'<Defender>'}]},mode:'policy',state:'partial',policyId:'cataphract-base-t1',
+ choice:{source:'policy',optionId:'A',reason:'Review both branches'},diagnostics:[],warnings:[],options:[{id:'A',score:0,
+ move:{to:{x:4,y:1},path:[{x:1,y:1},{x:2,y:1},{x:3,y:1},{x:4,y:1}],cost:3},
+ action:{kind:'impale',targetTokenIds:['pc'],saveTarget:12,pauseIndex:0,carryPath:[{x:2,y:1},{x:3,y:1},{x:4,y:1},{x:5,y:1}]},
+ facts:{targetName:'<Defender>',moveCost:3,usesBoost:false}}]};
+ const html=renderReview(review,true);assert.match(html,/Hull/);assert.match(html,/12/);assert.match(html,/Full/);assert.match(html,/recharge/i);
+ assert.match(html,/\(2,1\).*\(3,1\).*\(4,1\).*\(5,1\)/);assert(html.includes('&lt;Defender&gt;'));assert(!html.includes('outside enemy threat'));
+});
+
 test('partial-turn review exposes remaining shared actions and movement before approval', () => {
   const partial = structuredClone(review);
   partial.snapshot.actionBudget = { move: 2, quick: 1, full: false, protocol: false, reaction: true };

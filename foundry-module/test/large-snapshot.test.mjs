@@ -6,6 +6,7 @@ import { environment } from './adapter.test.mjs';
 import { extractSnapshot } from '../scripts/adapter/snapshot.mjs';
 import { tokenDistance, neighbors, cellKey } from '../scripts/core/grid.mjs';
 import { reachableCells } from '../scripts/core/reach.mjs';
+import { collectCarryGeometry } from '../scripts/adapter/carry-geometry.mjs';
 
 test('large native documents feed exact snapshot footprints, range and swept wall checks', {
   skip: !process.env.PILOT_FOUNDRY_CODE,
@@ -46,6 +47,14 @@ test('large native documents feed exact snapshot footprints, range and swept wal
       const targetNative = env.canvas.tokens.placeables[1].document.getOccupiedGridSpaceOffsets().map(c => ({ x: c.j, y: c.i }));
       assert.deepEqual(target.occupiedCells[cellKey(target.pos)], targetNative);
       assert(Number.isFinite(tokenDistance(b.snapshot.grid, mover, target)));
+      const nativeTarget=env.canvas.tokens.placeables[1],targetBefore=JSON.stringify(nativeTarget.document.toObject());
+      const carry=collectCarryGeometry(env,b.snapshot);
+      for(const [key,position] of Object.entries(carry.positions[target.id])){
+        const actual=nativeTarget.document.getOccupiedGridSpaceOffsets(position).map(c=>({x:c.j,y:c.i}));
+        assert.equal(cellKey(actual[0]),key);
+        assert.deepEqual(target.occupiedCells[key],actual);
+      }
+      assert.equal(JSON.stringify(nativeTarget.document.toObject()),targetBefore);
       for (const entry of reachableCells(b.snapshot, mover.id).values()) {
         const native = active.document.getOccupiedGridSpaceOffsets(b.positions[cellKey(entry.to)]).map(c => ({ x: c.j, y: c.i }));
         assert.deepEqual(mover.occupiedCells[cellKey(entry.to)], native);

@@ -6,9 +6,11 @@ import { readNpcWeapons } from './weapons.mjs';
 import { coverageDiagnostic } from '../core/coverage.mjs';
 import { readActionBudget } from './budgets.mjs';
 import { sweptWallBlocked } from './swept.mjs';
+import { collectCarryGeometry } from './carry-geometry.mjs';
+import { CATAPHRACT_MOVEMENT } from '../rules/cataphract.mjs';
 
 export const MODULE_ID = 'lancer-npc-pilot';
-const ACTIVE_STATUSES = new Set(['IMPAIRED', 'IMMOBILIZED', 'SLOWED', 'STUNNED', 'LOCKON', 'SHREDDED', 'EXPOSED']);
+const ACTIVE_STATUSES = new Set(['IMPAIRED', 'IMMOBILIZED', 'SLOWED', 'STUNNED', 'LOCKON', 'SHREDDED', 'EXPOSED', 'ENGAGED']);
 const pair = value => [Number(value?.value), Number(value?.max)];
 const number = value => Number(value);
 const plain = value => JSON.parse(JSON.stringify(value));
@@ -58,14 +60,15 @@ export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
     heat: s.heat ? pair(s.heat) : undefined, structure: s.structure ? pair(s.structure) : undefined,
     stress: s.stress ? pair(s.stress) : undefined, overshield: number(s.overshield?.value ?? 0),
     armor: number(s.armor), evasion: number(s.evasion), edef: number(s.edef), speed: number(s.speed),
-    sensors: number(s.sensor_range), statuses: [...(actor.statuses ?? [])],
+    sensors: number(s.sensor_range), saveTarget: Number.isFinite(s.save) ? s.save : null,
+    hull: Number.isFinite(s.hull) ? s.hull : null, statuses: [...(actor.statuses ?? [])],
     resistances: Object.entries(s.resistances ?? {}).filter(([, v]) => v === true).map(([k]) => k),
     weapons, excludedWeapons, persona: String(actor.getFlag?.(MODULE_ID, 'persona') ?? '').slice(0, 2000),
     defeated: Boolean(s.destroyed) };
 }
 
 /** Read-only, synchronous extraction: no animation or document mutation during planning. */
-export function extractSnapshot({ game, canvas, constants }, { expectedTracker } = {}) {
+export function extractSnapshot({ game, canvas, constants }, { expectedTracker,cataphractGeometry=false } = {}) {
   if (!game.user?.isGM || game.system?.id !== 'lancer') throw Error('Lancer NPC Pilot requires a Lancer GM client.');
   const combat = game.combat, scene = canvas.scene;
   if (!canvas.ready || !scene) throw Error('The scene is not ready. Open the encounter map and wait for the scene to finish loading, then retry Plan Turn.');
@@ -87,6 +90,12 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     geometries.set(t.id, tokenGeometry(t, canvas.grid));
   }
   for (const status of active.actor.statuses ?? []) {
+    const ownedGrapple=normStatus(status)==='NPCPILOTGRAPPLE' && [...(active.actor.effects??[])].some(e=>{
+      const g=e.flags?.[MODULE_ID]?.grapple;
+      return !e.disabled&&g?.tokenId===active.id&&(scene.getFlag?.(MODULE_ID,'grapples')??[]).some(l=>l.id===g.id
+        &&[l.sourceTokenId,l.targetTokenId].includes(active.id));
+    });
+    if(ownedGrapple)continue;
     if (!ACTIVE_STATUSES.has(normStatus(status)) && !String(status).startsWith('resistance_'))
       throw Error(`Active NPC condition ${status} needs manual play.`);
   }
@@ -100,7 +109,7 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   const snapshot = { round: combat.round, activeTokenId: active.id,
     actionBudget,
     grid, tokens: tokens.map(t => readToken(t, canvas.grid, geometries.get(t.id))),
-    blocked: [], blockedMoves: [], blockedAnchorMoves: [], difficult: [], cover: {}, losFrom: {} };
+    blocked: [], blockedMoves: [], blockedAnchorMoves: [], engagementMoves: [], difficult: [], cover: {}, losFrom: {} };
   for (const t of snapshot.tokens) {
     if ((combat.combatants?.contents ?? combat.combatants ?? []).some(c => c.tokenId === t.id && c.defeated)) t.defeated = true;
     // Wrecks remain obstacles until the GM removes their token.
@@ -115,7 +124,7 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
   const positions = {};
   const rect = canvas.dimensions.sceneRect;
   const inside = c => insideScene(geometry.positionAt(c), geometry.dimensions, rect);
-  const radius = actionBudget.move + speed + 1;
+  const radius = Math.max(actionBudget.move + speed + 1,cataphractGeometry?8:0);
   const prepare = c => {
     if (!inside(c)) return false;
     const cells = geometry.cellsAt(c);
@@ -157,7 +166,10 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
           const a = geometry.positionAt(from), b = geometry.positionAt(to);
           return sweptWallBlocked(geometry.polygonAt(from), { x: b.x - a.x, y: b.y - a.y }, walls, constants.WALL_MOVEMENT_TYPES);
         };
-        if (engaged || !prepare(to) || swept() || collision(center(to), { origin: center(from), type: 'move', mode: 'any' }) !== false) {
+        // Engagement never short-circuits collision collection: a reviewed
+        // exception may ignore engagement but must still observe this wall.
+        if (engaged) snapshot.engagementMoves.push(edge);
+        if (!prepare(to) || swept() || collision(center(to), { origin: center(from), type: 'move', mode: 'any' }) !== false) {
           snapshot.blockedAnchorMoves.push(edge);
           // Preserve the existing single-cell directed-wall representation too.
           if (mover.occupiedCells[cellKey(from)].length === 1) snapshot.blockedMoves.push(edge);
@@ -176,14 +188,18 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
       }
     }
   }
-  for (const { to } of reachableCells(snapshot, active.id, { maxCost: actionBudget.move }).values()) {
+  for (const { to } of reachableCells(snapshot, active.id, { maxCost:cataphractGeometry?Math.max(8,actionBudget.move+speed):actionBudget.move,
+    ...(cataphractGeometry?CATAPHRACT_MOVEMENT:{}) }).values()) {
     const los = snapshot.losFrom[cellKey(to)] = {};
-    for (const target of snapshot.tokens.filter(t => t.side !== mover.side && t.side !== 'neutral' && !t.defeated)) {
+    for (const target of snapshot.tokens.filter(t => t.id!==mover.id&&!t.defeated&&(cataphractGeometry||(t.side !== mover.side && t.side !== 'neutral')))) {
       los[target.id] = !hidden(target) && bodyPoints(active.id, to).some(from =>
         bodyPoints(target.id, target.pos).some(end => collision(end.point,
           { origin: from.point, type: 'sight', mode: 'any' }) === false));
     }
   }
+  const carryPositions=cataphractGeometry?collectCarryGeometry({canvas,constants},snapshot,
+    {tokenIds:snapshot.tokens.map(t=>t.id),radius:Math.max(8,actionBudget.move+speed)}).positions:undefined;
+  const nativeAutomation=cataphractGeometry?plain(game.settings?.get('lancer','automationOptions')??{}):undefined;
   const validation = validateSnapshot(snapshot);
   if (!validation.ok) throw Error(`Cannot read a valid Lancer board: ${validation.errors.map(e => `${e.path}: ${e.message}`).join('; ')}`);
   const sceneData = plain(scene.toObject());
@@ -213,10 +229,10 @@ export function extractSnapshot({ game, canvas, constants }, { expectedTracker }
     }
     return { token, actor };
   });
-  return { snapshot, positions, turn: `${scene.id}:${combat.id}:${combat.round}:${combat.turn}:${active.id}`,
+  return { snapshot, positions,...(cataphractGeometry?{carryPositions,nativeAutomation,cataphractGeometry:true}:{}), turn: `${scene.id}:${combat.id}:${combat.round}:${combat.turn}:${active.id}`,
     guard: JSON.stringify({ scene: sceneData, combat: combat.toObject(), tokens: guardTokens }),
     stamp: JSON.stringify({ scene: scene.toObject(), combat: combat.toObject(),
-      tokens: tokens.map(t => ({ token: t.document.toObject(), actor: t.actor.toObject() })), snapshot }),
+      tokens: tokens.map(t => ({ token: t.document.toObject(), actor: t.actor.toObject() })), snapshot,...(cataphractGeometry?{nativeAutomation}: {}) }),
     terrainReviewed: terrain.reviewed === true,
     warnings: [...mover.excludedWeapons.map(w => `${w.name}: ${w.reason}`),
       ...((tracker.full !== true || tracker.quick !== true)

@@ -20,6 +20,7 @@ export function readActionBudget(actor) {
   const statuses = new Set([...(actor.statuses ?? [])].map(normStatus));
   const blocked = statuses.has('STUNNED') ? ['move', 'boost', 'quick', 'full', 'protocol', 'reaction', 'free']
     : statuses.has('IMMOBILIZED') ? ['move', 'boost'] : statuses.has('SLOWED') ? ['boost'] : [];
+  if(statuses.has('NPCPILOTGRAPPLE'))blocked.push('boost','reaction');
   // Native slots do not say which weapon/mode or Boost was already used.
   // Keep the observed slot, but do not infer permission to repeat an action.
   const tracker = actor.system.action_tracker;

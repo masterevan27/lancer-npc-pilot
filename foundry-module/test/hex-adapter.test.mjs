@@ -141,9 +141,9 @@ test('half-size targets retain their real collision centers and only engage equa
   target.document.x = 250; target.document.y = 100;
   mover.checkCollision = (to, options) => { rays.push({ to, ...options }); return false; };
   let board = extractSnapshot(env);
-  assert(!board.snapshot.blockedMoves.includes('1,1>1,2'));
+  assert(!board.snapshot.engagementMoves.includes('1,1>1,2'));
   assert(rays.some(r => r.type === 'sight' && r.to.x === 275 && r.to.y === 125));
   mover.actor.system.size = 0.5;
   board = extractSnapshot(env);
-  assert(board.snapshot.blockedMoves.includes('1,1>1,2'));
+  assert(board.snapshot.engagementMoves.includes('1,1>1,2'));
 });

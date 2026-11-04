@@ -140,9 +140,9 @@ export function generateCandidates(snap, opts = {}) {
   const quickAvailable = !budget || canSpend(budget, { quick: 1 }).ok;
   const boostAvailable = !budget || canSpend(budget, { boost: 1 }).ok;
   const speed = immobile ? 0 : Math.max(0, Math.floor(budget?.move ?? me.speed));
-  const reach1 = reachableCells(snap, me.id, { maxCost: speed });
+  const reach1 = reachableCells(snap, me.id, { ...opts.movement, maxCost: speed });
   const reach2 = slowed || immobile || !boostAvailable ? reach1
-    : reachableCells(snap, me.id, { maxCost: speed + (budget?.speed ?? me.speed) });
+    : reachableCells(snap, me.id, { ...opts.movement, maxCost: speed + (budget?.speed ?? me.speed) });
   const toMove = (r) => (r.to.x === start.x && r.to.y === start.y ? null : { to: r.to, path: r.path, cost: r.cost });
 
   const out = [];

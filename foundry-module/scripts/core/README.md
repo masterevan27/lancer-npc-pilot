@@ -29,8 +29,18 @@ then supported family representatives within the cap. Diagnostics name omitted
 families and bounds. Generation retains one shortest route per endpoint and
 one move plus one action. States ready/partial may suggest a choice;
 needs-input/unconfigured never select a fallback. Production currently supplies
-only a free order and conservative special/reaction gaps. Synthetic CAT fixtures
+only a free order and conservative target/reaction gaps. Synthetic CAT fixtures
 do not grant mechanics. See [selector evidence](../../../docs/review-evidence/2026-11-03-policy-selector.md).
+
+Development 0.9.0 adds pure `cataphract.mjs` contacts, straight Impale branches
+and unique-nearest-hostile identity, plus `grapples.mjs` restrictions, paired
+routes and actual opposed-receipt comparison. These return data, never native
+effects or rolls. `movementContext` separates engagement edges from immutable
+walls and accepts explicit reviewed passage/engagement exceptions. Default
+model callers keep ordinary movement. Native carry footprints/walls, source
+hashing, durable claims, native flows and GM approval stay in adapter code.
+Unknown target passives or missing geometry cannot become permission. See
+[implementation scope and checks](../../../docs/review-evidence/2026-11-03-cataphract-implementation.md).
 
 ## Data flow
 

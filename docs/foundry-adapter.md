@@ -35,11 +35,23 @@ sources:
     resource: ../foundry-module/scripts/adapter/policy-context.mjs
   - id: policy-selector
     resource: ../foundry-module/scripts/core/policy.mjs
+  - id: policy-acceptance
+    resource: review-evidence/2026-11-03-policy-acceptance.md
+  - id: cataphract-implementation
+    resource: review-evidence/2026-11-03-cataphract-implementation.md
+  - id: cataphract-native
+    resource: review-evidence/2026-11-03-cataphract-native-acceptance.md
+  - id: cataphract-executor
+    resource: ../foundry-module/scripts/adapter/cataphract-executor.mjs
+  - id: standalone-grapple
+    resource: ../foundry-module/scripts/adapter/grapple-controller.mjs
+  - id: shield-application
+    resource: ../foundry-module/scripts/adapter/shield-controller.mjs
   - id: design
     resource: design.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-03T08:47:27.664Z
+  at: 2026-11-04T02:11:23.362Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -188,16 +200,20 @@ tokens, start combat or link a scene automatically.
 - HIDDEN enemies cannot be attack targets. Paths stop on entering adjacency
   to a visible enemy of equal or greater Size; an already-engaged NPC must
   move manually. This deliberately restricts movement rather than approximating
-  Disengage. Hidden enemies do not cause engagement.
-- Region movement rules, large tokens, different elevations, Hide,
-  tech attacks, reactions and complex feature activations require manual play.
+  Disengage. The reviewed 0.9.0 policy-only Trample handler is the explicit
+  engagement/passage exception; walls and occupied endpoints remain enforced.
+  Hidden enemies do not cause engagement.
+- Region movement rules, different elevations, Hide,
+  tech attacks, reactions and unreviewed feature activations require manual play.
 
 This is intentionally narrower than the pure core and design. The inherited
 `RULE?` assumptions in the core have **not** all been verified in live Lancer.
 Hit/crit/expected-damage figures are scoring estimates, not predicted outcomes.
 Cover is GM-supplied per cell and remains an approximation. Review engagement,
 special traits and all accuracy/difficulty in the Lancer HUD. Resolve reactions
-along the route manually; Pilot does not resolve Overwatch or damage.
+along the route manually; Pilot does not resolve Overwatch. The 0.9.0 handlers
+delegate fixed Trample damage and explicitly approved Shield card applications
+to native damage calculation; weapon rolls and outcomes remain native handoffs.
 
 ### Terrain and personas
 
@@ -402,11 +418,11 @@ removes the affected source's choices; readiness and budget remain independent
 requirements. A spent/restricted ordinary attack budget reports Ram Cannon
 unavailable with the budget reason while retaining its source-match metadata.
 A matching source cannot enable a missing special handler.
-Currently Trample, Impale and Point-Defense Shield remain manual, so a valid
-base actor reports **partial** coverage even when ordinary Ram Cannon attacks
-and movement are available. Unknown shield benefits and reaction exposure are
-visible; no resistance, reaction immunity, save result or displacement is applied
-by this selector. With no supported attack it may suggest an ordinary move/hold.
+The original 0.8.0 slice offered ordinary movement/Ram Cannon only. Development
+0.9.0 adds the scoped mechanics below. Coverage remains **partial** because
+unsupported target passives and broader native acceptance are unfinished.
+Unknown useful Shield protection and reaction exposure remain visible; the
+selector never fabricates a save result or grants reaction immunity.
 
 The review shows the policy/state, estimated reasons, coverage and uncertainty,
 plus **Re-plan**, **Policy settings**, **Skip** and **Do it manually**. Policy
@@ -421,4 +437,87 @@ expires review before execution/reservations. Changes during asynchronous source
 hashing discard the proposal. Native execution, locks and resource guards stay
 in the existing executor. Selection examines one shortest path per endpoint and
 one supported action, capped to eight review slots with explicit omissions.
-See [selector evidence and live gates](review-evidence/2026-11-03-policy-selector.md).
+The [November 3 disposable-world pass](review-evidence/2026-11-03-policy-acceptance.md)
+observed disconnected policy review, manual/configuration controls, changed
+board/binding/source refusals, ordinary movement and native ranged Ram Cannon
+handoff with HUD cancellation. It includes a real policy UI capture and explicit
+remaining gates; it does not establish the unsupported special mechanics.
+See also [selector implementation evidence](review-evidence/2026-11-03-policy-selector.md).
+
+## Cataphract mechanics (development 0.9.0 source)
+
+This development source is included in the authorized partial local landing;
+[landing scope and checks](review-evidence/2026-11-03-cataphract-landing.md).
+Authorized temporary
+TEST COPY staging exercised native mechanics, then restored the exact original
+0.8.0 module, world and configuration; original campaign data hashes matched.
+Full special-mechanic acceptance is **blocked**: Automations coexistence remains
+unsupported and broader acceptance is unfinished. Scoped standalone passes now
+include both Impale save branches, Shield HP/Heat and replay refusal, first-turn
+control, paired movement and escape cancellation/completion, alongside prior
+transit/free-release checks. The 625-test source suite does not establish full
+acceptance. See the
+[native findings](review-evidence/2026-11-03-cataphract-native-acceptance.md).
+[Implementation checks and remaining gates](review-evidence/2026-11-03-cataphract-implementation.md).
+
+- **Trample:** source-verified T1 base policy routes can cross characters and
+  ignore engagement. They retain native walls, full-body occupancy, terrain
+  costs and legal endpoints. Each actually crossed character, including allies
+  and neutrals, can receive native fixed 2 kinetic damage at most once per
+  Cataphract turn, shared across segments. Claims persist before application.
+  An observed new native activation establishes history. Joining/reloading or
+  ordinary manual movement makes the current history unknown without clearing
+  claims; harmful transit remains manual until the next observed activation.
+- **Impale:** requires a ready recharge item, both native Lancer **attacks** and
+  **limited/loading** automation options, native save flows and an unspent Full
+  action. Approve the straight route and conditional carried placement. Pilot
+  pauses at a legal adjacent position before first contact, or at the adjacent
+  endpoint; Lancer resolves Hull against the NPC save target with +1 difficulty.
+  Actual failure establishes Pilot-owned native effects and mirrored movement;
+  actual success continues only the Cataphract. Cancellation stops continuation
+  and retains action/recharge spending. Ordinary movement is preserved.
+- **Standalone grapple:** **Alt+G** opens free release for the original grappler,
+  defender quick-action escape, same-size start-of-turn control contest and
+  reviewed paired movement. Same-size control requires an observed native turn
+  and refreshed actions; only the native turn's exact one-time action/reaction
+  refreshes may advance that window. With Lancer Ruler Integration 7.3, its exact
+  one-time current-combatant turn-status write may also complete turn start;
+  other statuses, flags, versions and board drift still refuse. Rolls, action flows, movement or other board
+  changes invalidate it. Non-roll turn banners do not. Native Hull rolls determine opposed results; Core
+  Book p.13 awards ties to the actual initiator. Both characters lose Boost and
+  reactions; the controlled side is Immobilized. Larger size controls after the
+  Impale movement finishes. Partial-turn action identity, multiple grapples,
+  unsupported changes or interrupted pending sessions remain manual. Cataphract
+  paired movement uses **Plan Turn** so Trample accounting remains shared.
+  Ordinary dragging is blocked on all clients; native API forced movement can
+  break adjacency. Cleanup queues behind active mechanics and removes only
+  Pilot-owned effects on broken adjacency, deletion or native defeat/destruction.
+  Zero HP awaiting native structure resolution does not invent destruction.
+- **Point-Defense Shield:** for newly observed native damage cards, clicking the
+  native Apply control for a Shield-bearing target opens GM review. The current
+  board, exact Shield source, unique source speaker token, full hostile
+  population, confirmed amounts and native multiplier are rechecked. Resistance
+  applies only to the unique nearest hostile, after armor, without stacking.
+  Shield does not reduce Heat. Native half damage remains an independent GM
+  choice affecting Heat too; heatless actors convert Heat to Energy natively.
+  Old/reloaded/stale cards, ambiguous speakers and uncertain prior application
+  remain manual. Write-ahead card claims prevent automatic double application.
+
+Target source checks deliberately refuse automated Trample contact and Impale
+against unreviewed NPC traits/templates, PC frames/talents/systems or active
+effects. Supported ordinary native attacks can still be offered. This is a
+conservative interaction boundary, not complete target-roster support. No private
+Lancer Automations grapple API or flags are used; that module is optional.
+When it is active, Cataphract special movement and standalone paired movement
+refuse before reservation, costs or token movement; Shield refuses before claims
+or damage. Resolve them manually. Native checks observed movement refusal and
+Shield refusal with HP/Heat unchanged. This is a manual fallback, not coexistence
+support.
+Other modules' effects remain fully guarded; Pilot does not accept arbitrary
+engagement changes or disable Automations to bypass this boundary.
+
+Execution and turn prompts still default off. Free release, escape, control
+contests, paired movement and Shield damage require the active GM and enabled
+execution plus explicit review. Mandatory expiry of already-established owned
+effects remains cleanup when execution is disabled. Neither policy planning nor
+these handlers calls a model relay or reads a provider key.

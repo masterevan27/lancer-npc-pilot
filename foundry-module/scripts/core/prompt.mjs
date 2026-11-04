@@ -16,6 +16,8 @@ const pair = (v) => (Array.isArray(v) ? `${v[0]}/${v[1]}` : '-');
 /** One-line, plain-words description of an option (also useful for the UI). */
 export function describeOption(opt) {
   const f = opt.facts;
+  if(opt.action.kind==='impale')return `Impale ${f.targetName??opt.action.targetTokenIds?.[0]}: Full action and native recharge use; straight route to ${cell(opt.move.to)} (${opt.move.cost} movement cost from the special grant; ordinary movement preserved).`
+    +` Native Hull save vs ${opt.action.saveTarget}, +1 difficulty. Success: Cataphract continues alone. Failure: grapple and carry to ${cell(opt.action.carryPath.at(-1))}. Cancellation stops continuation and retains spending.`;
   const parts = [];
   const move = opt.move
     ? `Move ${opt.move.cost} space${opt.move.cost === 1 ? '' : 's'} to ${cell(opt.move.to)}${f.usesBoost ? ' (uses Boost)' : ''}`

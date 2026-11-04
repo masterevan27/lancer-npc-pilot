@@ -183,8 +183,8 @@ test('Hidden enemies cannot be attacked and entering engagement stops further mo
   assert.equal(extractSnapshot(env).snapshot.losFrom['1,1'].pc, false);
   enemy.actor.statuses.clear();
   const snapshot = extractSnapshot(env).snapshot;
-  assert(snapshot.blockedMoves.includes('3,1>3,2'));
-  assert(!snapshot.blockedMoves.includes('2,1>3,1'));
+  assert(snapshot.engagementMoves.includes('3,1>3,2'));
+  assert(!snapshot.engagementMoves.includes('2,1>3,1'));
 });
 
 test('real adapter guard permits its own reservation and v13 movement history but detects other changes', async () => {

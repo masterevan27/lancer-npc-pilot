@@ -1,8 +1,9 @@
 import { generateCandidates, pickTop } from '../core/options.mjs';
 import { buildPrompt } from '../core/prompt.mjs';
 import { interpretReply, retryMessage } from '../core/reply.mjs';
-import { canonicalPlanKey, evaluatePolicyCandidate, comparePolicyEvaluations, selectPolicyDecision } from '../core/policy.mjs';
+import { selectPolicyDecision } from '../core/policy.mjs';
 import { explainEvaluation } from '../core/policy-metrics.mjs';
+import { generatePolicyCandidates } from './policy-candidates.mjs';
 
 /** Pure orchestration with injected I/O. Only approve() can reach execution. */
 export class PilotController {
@@ -75,9 +76,7 @@ export class PilotController {
       if(!['ready','partial'].includes(context.state)) decision={state:context.state ?? 'needs-input',candidates:[],evaluations:[],
         selectedKey:null,diagnostics:context.coverageGaps ?? ['Policy configuration requires input.']};
       else {
-        const candidates=generateCandidates(context.snapshot,{candidateKey:canonicalPlanKey,
-          compareCandidates:(a,b)=>comparePolicyEvaluations(evaluatePolicyCandidate(a,context),evaluatePolicyCandidate(b,context))})
-          .filter(o=>['attack','boost','retreat','hold'].includes(o.action.kind));
+        const candidates=generatePolicyCandidates(context);
         decision=selectPolicyDecision(candidates,context);
       }
       const options=decision.candidates;

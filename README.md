@@ -6,17 +6,15 @@ options. Choose the opt-in module policy selector without a relay, or use a
 language model through Anthropic or Ollama to pick one in character. The GM
 approves it, and Foundry and the Lancer system roll the dice.
 
-![GM review of a Size-2 fixture proposal, showing remaining movement and actions, ranked routes, manual warnings and approval controls](docs/assets/npc-pilot-review-0.7.0.png)
+![GM policy review showing partial Cataphract coverage, remaining movement and actions, ordinary ranged options and approval controls](docs/assets/npc-pilot-policy-review-0.8.0.jpg)
 
-Historical model-mode review in an isolated scene in the disposable test world, captured November
-3, 2026 with development 0.7.0 (d9a1d04 plus this milestone). The seven-space
-partial budget was seeded on the fixture; this is a real UI capture, not proof
-of naturally retained movement or complete gameplay acceptance.
-[Scoped evidence](docs/review-evidence/2026-11-02-execution-acceptance.md).
+Real policy-mode review in an isolated disposable-world fixture, captured
+November 3, 2026 with development 0.8.0 at `9b0a5df`. The native turn supplies
+the displayed budget. Ordinary movement, native Ram Cannon handoff and safety
+refusals have scoped live evidence; complete Cataphract mechanics remain open.
+[Acceptance evidence and limitations](docs/review-evidence/2026-11-03-policy-acceptance.md).
 
-<!-- doc-media TODO: Capture the 0.8.0 policy review with partial coverage, Re-plan and no-choice controls in an authorized disposable world. Acceptance: inspect real pixels and sanitize token/world details. Blocker: this selector implementation task does not authorize live deployment or world changes. The 0.7.0 image above is historical model-mode evidence. -->
-
-Status: development 0.8.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
+Status: development 0.9.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
 The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
@@ -37,11 +35,27 @@ These guides do not enable special abilities. [Coverage evidence](docs/review-ev
 The [roadmap](docs/roadmap.md) records remaining mechanics work and the planned
 move toward book-derived class policies, beginning with a T1 base Cataphract.
 Development 0.8.0 adds explicit client **Decision mode → Module policy (no relay)**.
-The first maintained binding is a T1 base Cataphract. It selects supported ordinary
-choices deterministically and reports partial coverage: Trample, Impale and
-Point-Defense Shield remain manual. Model mode stays the default. See
+The first maintained binding is a T1 base Cataphract. Development 0.9.0 adds
+source-checked Trample routes/damage, native-save Impale continuation, standalone
+grapple management and source-specific Shield damage application. Unknown target
+passives, prior turn history and stale native cards retain manual paths. This
+source has automated/native-source checks; disposable-world acceptance of the
+new mechanics remains open. Model mode stays the default. See
 [binding and review instructions](docs/foundry-adapter.md#module-policy-mode-development-080)
 and [selector evidence and remaining gates](docs/review-evidence/2026-11-03-policy-selector.md).
+
+![Native Impale approval review showing the straight route, save timing, conditional carry and remaining actions](docs/assets/cataphract-review-0.9.0-2026-11-03.jpg)
+
+Real 0.9.0 TEST COPY review captured November 3, 2026 from the dirty development
+branch based on `9b0a5df`. Standalone Trample, both Impale save branches, free release, Shield HP/Heat
+application and replay refusal, first-turn control, paired movement, and escape
+cancellation/completion have scoped native passes. **Step 2 remains blocked** on
+Lancer Automations coexistence and broader acceptance. With Automations active,
+special/paired movement and Shield application refuse before mutation; resolve
+them manually. The current source suite passes 625 tests. The shared module and TEST COPY were restored
+to their exact 0.8.0 baseline; the original campaign data hashes were unchanged.
+[Native findings and restoration evidence](docs/review-evidence/2026-11-03-cataphract-native-acceptance.md).
+The earlier screenshot above records the 0.8.0 ordinary slice.
 
 | Part | Folder | Runs on |
 |---|---|---|

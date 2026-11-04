@@ -70,10 +70,12 @@ Ranking uses soft order, class weighted utility, bounded individual preference,
 then existing basic score, followed by movement cost and canonical identity.
 Hard orders never relax; missing mandatory native geometry requires input.
 Production supplies a free order. Other structured orders are core interfaces
-for injected inputs, with no objective editor yet. No reviewed special handlers
-are added: ordinary movement and supported Ram Cannon choices can be offered,
-while special mechanics, shield protection and reaction context remain explicit
-gaps. This is a bounded one-move/one-action search with one shortest path per
+for injected inputs, with no objective editor yet. Development 0.9.0 adds scoped,
+exact-source Cataphract Trample/Impale choices, standalone grapple lifecycle and
+native Shield card application. Unsupported target interactions, useful incoming
+protection, reactions and new live acceptance remain explicit gaps. See the
+[mechanics scope](foundry-adapter.md#cataphract-mechanics-development-090-source).
+This is a bounded one-move/one-action search with one shortest path per
 endpoint, not an optimal multi-turn planner.
 
 Policy planning never requests a relay or a secret. Its review holds private

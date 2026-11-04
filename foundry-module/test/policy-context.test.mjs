@@ -11,6 +11,34 @@ test('exact native binding resolves metadata without exposing prose or granting 
  assert.equal(c.capabilities.ramCannon.available,true);assert.equal(c.capabilities.impale.available,false);
  assert(!JSON.stringify(c).includes('synthetic-'));assert(c.coverageGaps.some(g=>g.includes('impale')));
 });
+
+test('reviewed specials require native geometry, known turn history, observed feature readiness and native recharge support',async()=>{
+ const f=nativeFixture();f.board.cataphractGeometry=true;f.board.carryPositions={};f.board.nativeAutomation={limited_loading:true,attacks:true};
+ f.game.lancer={flows:new Map([['StatRollFlow',class {}],['SystemFlow',class {}]])};
+ f.mutate(a=>{a.flags['lancer-npc-pilot'].trampleLedger={schemaVersion:1,turn:f.board.turn,known:true,targets:[]};
+  for(const i of a.items.filter(i=>i.type==='npc_feature'))Object.assign(i.system,{destroyed:false,disabled:false,charged:true});});
+ let c=await resolvePolicyContext(f.board,readDecisionConfig(f),f);
+ assert.equal(c.capabilities.trample.available,true);assert.equal(c.capabilities.impale.available,true);assert.equal(c.capabilities.shield.available,true);
+ f.board.nativeAutomation.attacks=false;c=await resolvePolicyContext(f.board,readDecisionConfig(f),f);
+ assert.equal(c.capabilities.impale.available,false);assert.equal(c.capabilities.trample.available,true);
+ f.mutate(a=>a.flags['lancer-npc-pilot'].trampleLedger.known=false);
+ c=await resolvePolicyContext(f.board,readDecisionConfig(f),f);assert.equal(c.capabilities.trample.available,false);
+});
+
+test('target interaction proof rejects excluded weapon scripts and drift in any required base feature',async()=>{
+ for(const variant of ['excluded-weapon','drifted-ram']){
+  const f=nativeFixture();f.board.cataphractGeometry=true;f.board.carryPositions={};
+  const target=f.board.snapshot.tokens.find(t=>t.id!==f.board.snapshot.activeTokenId),native=JSON.parse(f.board.stamp);
+  const actor=structuredClone(native.tokens[0].actor);actor._id=target.actorId;actor.effects=[];
+  if(variant==='excluded-weapon'){
+    actor.items=[{_id:'weapon',type:'npc_feature',system:{type:'Weapon',effect:'unreviewed weapon effect'}}];
+    target.excludedWeapons=[{itemId:'weapon',reason:'Unreviewed effect'}];
+  }else actor.items.find(i=>i.system?.lid==='npcf_ram_cannon_cataphract').system.effect='drifted';
+  native.tokens.push({token:{_id:target.id},actor});f.board.stamp=JSON.stringify(native);
+  const c=await resolvePolicyContext(f.board,readDecisionConfig(f),f);
+  const observed=c.snapshot.tokens.find(t=>t.id===target.id);assert.equal(observed.impaleEligible,false);assert.equal(observed.trampleEligible,false);
+ }
+});
 test('CAT-09 source drift removes the affected capability and Ram choices, not independent ordinary movement',async()=>{
  const f=nativeFixture();f.mutate(a=>a.items.find(i=>i.system.lid==='npcf_impale_cataphract').system.effect='changed');
  let c=await resolvePolicyContext(f.board,readDecisionConfig(f),f);

@@ -3,6 +3,11 @@ import { PilotController, requestDecision } from './adapter/controller.mjs';
 import { executeOption, isResponsibleGM } from './adapter/executor.mjs';
 import { showReview, escapeHtml } from './adapter/review.mjs';
 import { bindActorPolicy,readDecisionConfig,resolvePolicyContext } from './adapter/policy-context.mjs';
+import { executeCataphract } from './adapter/cataphract-executor.mjs';
+import { createGrappleController } from './adapter/grapple-controller.mjs';
+import { createShieldController } from './adapter/shield-controller.mjs';
+import { registerTrampleHistory } from './adapter/trample-hooks.mjs';
+import { registerGrappleMovementGuard } from './adapter/grapple-movement-guard.mjs';
 
 export function registerSettings(game) {
   game.settings.register(MODULE_ID,'decisionMode',{name:'Decision mode',scope:'client',config:true,type:String,
@@ -19,36 +24,70 @@ export function registerSettings(game) {
     editable: [{ key: 'KeyP', modifiers: ['ALT'] }], restricted: true,
     onDown: () => { const api = game.modules.get(MODULE_ID)?.api; if (!api) return false;
       void api.planTurn().catch(e => globalThis.ui?.notifications?.error(e.message)); return true; } });
+  game.keybindings.register(MODULE_ID,'manageGrapples',{name:'Manage Pilot grapples',editable:[{key:'KeyG',modifiers:['ALT']}],restricted:true,
+    onDown:()=>{const api=game.modules.get(MODULE_ID)?.api;if(!api)return false;
+      void api.manageGrapples().catch(e=>globalThis.ui?.notifications?.error(e.message));return true;}});
 }
 
 export function initializePilot({ game, canvas, constants, Hooks, DialogV2, ChatMessage, notifications, locks = globalThis.navigator?.locks }) {
-  if (!game.user?.isGM || game.system?.id !== 'lancer') return null;
+  if(game.system?.id!=='lancer')return null;
+  registerGrappleMovementGuard({canvas,Hooks,notifications});
+  if (!game.user?.isGM) return null;
   const setting = key => game.settings.get(MODULE_ID, key);
-  const read = options => extractSnapshot({ game, canvas, constants }, options);
+  const read = options => {
+    const binding=canvas.tokens?.get(game.combat?.combatant?.tokenId)?.actor?.getFlag(MODULE_ID,'policyBinding');
+    return extractSnapshot({game,canvas,constants},{...options,cataphractGeometry:setting('decisionMode')==='policy'
+      &&binding?.classId==='npcc_cataphract'&&binding.policyId==='cataphract-base-t1'});
+  };
   const canExecute = () => game.user.isGM && isResponsibleGM(game) && setting('executionEnabled') === true;
-  const withLock = (key, fn) => {
+  const withLock = (key, fn, {wait=false}={}) => {
     if (!locks?.request) throw Error('Execution requires browser Web Locks. Use a current browser in a secure context.');
-    return locks.request(key, { ifAvailable: true }, lock => {
+    return locks.request(key, wait?{}:{ ifAvailable: true }, lock => {
       if (!lock) throw Error('This turn is executing in another browser tab.');
       return fn();
     });
   };
+  const grapples=createGrappleController({game,canvas,constants,Hooks,DialogV2,withLock,notifications,canExecute});
+  const shield=createShieldController({game,canvas,constants,Hooks,DialogV2,withLock,notifications,canExecute});
+  const history=registerTrampleHistory({game,canvas,Hooks,withLock,notifications});
   const controller = new PilotController({ read, canExecute,
     readDecisionConfig:board=>readDecisionConfig({game,board}),
     resolvePolicyContext:(board,config,options)=>resolvePolicyContext(board,config,{game,...options}),
     request: (payload, options) => requestDecision(payload, {
       relayUrl: setting('relayUrl'), secret: setting('secret'), provider: setting('provider'), model: setting('model'),
     }, options),
-    execute: (option, board, choice, {verifyDecision}) => executeOption(option, board, choice, { game, canvas, read, withLock,verifyDecision,
+    execute: (option, board, choice, {verifyDecision}) => (option.mechanics?.id==='cataphract-t1'?executeCataphract:executeOption)(option, board, choice, { game, canvas, read, withLock,verifyDecision,
       postLine: (line, token) => ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token }),
         flavor: 'NPC intent — before resolution', content: `<p>${escapeHtml(line)}</p>` }) }),
   });
   let busy = false;
   const api = {
+    grapples,shield,
+    async manageGrapples(){
+      if(!game.user.isGM||!canvas.scene)throw Error('View the encounter as GM.');
+      const links=canvas.scene.getFlag(MODULE_ID,'grapples')??[];
+      if(!links.length){notifications.info('No Pilot-owned grapples in this scene.');return;}
+      const button=(action,label)=>({action,label,callback:(_e,b)=>({action,id:b.form.elements.grapple.value,path:b.form.elements.path.value})});
+      const result=await DialogV2.wait({window:{title:'NPC Pilot — grapples'},rejectClose:false,
+        content:`<label>Grapple<select name="grapple">${links.map(l=>`<option value="${escapeHtml(l.id)}">${escapeHtml(canvas.tokens.get(l.sourceTokenId)?.name??l.sourceTokenId)} ↔ ${escapeHtml(canvas.tokens.get(l.targetTokenId)?.name??l.targetTokenId)}</option>`).join('')}</select></label>
+          <p>Use the active participant’s action. Same-size control contests are available only at the observed start of the turn. Cancellation retains the grapple; tied native checks go to the contest’s initiator.</p>
+          <label>Movement route, starting cell first (x,y pairs separated by spaces)<textarea name="path" placeholder="4,3 5,3 6,3"></textarea></label>
+          <p>For a Cataphract with Trample, use Plan Turn for paired movement and transit damage.</p>`,
+        buttons:[button('release','End grapple (grappler free action)'),button('escape','Break free (defender quick action)'),
+          button('contest','Contest control (same size)'),button('move','Review paired movement'),{action:'cancel',label:'Cancel',default:true,callback:()=>null}]});
+      if(!result)return;
+      controller.cancel();
+      if(result.action==='move'){
+        const cells=result.path.trim().split(/\s+/);
+        if(cells.length<2||cells.length>37||cells.some(c=>!/^\d+,\d+$/.test(c)))throw Error('Enter two to 37 grid cells as x,y pairs, starting at the current cell.');
+        return grapples.move(result.id,cells.map(c=>{const [x,y]=c.split(',').map(Number);return {x,y};}));
+      }
+      return grapples[result.action==='escape'?'breakFree':result.action==='contest'?'contest':'release'](result.id);
+    },
     async configurePolicy() {
       if(!game.user.isGM) throw Error('GM only.');
       await DialogV2.prompt({window:{title:'NPC Pilot — policy settings'},rejectClose:false,
-        content:'<p>Select Decision mode in Game Settings → Configure Settings → Lancer NPC Pilot. Policy mode requires no relay.</p><p>Bind a T1 base Cataphract with the GM module API; see the adapter guide. Only one native class and its base loadout are supported. Specials remain manual. Re-plan after changing the binding or mode.</p>',
+        content:'<p>Select Decision mode in Game Settings → Configure Settings → Lancer NPC Pilot. Policy mode requires no relay.</p><p>Bind a T1 base Cataphract with the GM module API; see the adapter guide. Trample and Impale require exact reviewed sources, native geometry and known turn history. Unsupported target traits remain manual. Alt+G manages Pilot-owned grapples. Re-plan after changing the binding or mode.</p>',
         ok:{label:'Close',callback:()=>true}});
       controller.cancel();return false;
     },
@@ -88,6 +127,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
       if (busy) { notifications.info('NPC Pilot is already planning or reviewing a turn.'); return; }
       busy = true;
       try {
+        await history.settled();
         if ((setting('decisionMode') ?? 'model') === 'model' && !setting('secret') && !await api.configureRelay()) return;
         for (;;) {
           notifications.info('NPC Pilot is planning. No token action is taken until you approve.');
@@ -114,7 +154,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     controller.cancel();
     const token = canvas.tokens?.get(combat.combatant?.tokenId);
     if (setting('promptOnTurn') && isResponsibleGM(game) && token?.actor?.type === 'npc' && !busy)
-      void api.planTurn().catch(e => notifications.error(e.message));
+      void history.settled().then(()=>api.planTurn()).catch(e => notifications.error(e.message));
   });
   Hooks.on('canvasTearDown', () => controller.cancel());
   return api;

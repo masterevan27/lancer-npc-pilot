@@ -4,6 +4,8 @@ import { canonicalData, inertData, record } from '../core/policy-data.mjs';
 import { resolvePolicy } from '../core/policy.mjs';
 import { canSpend } from '../core/budgets.mjs';
 import { MODULE_ID } from './snapshot.mjs';
+import { cataphractReadiness } from '../rules/cataphract.mjs';
+import { reviewCataphractSource } from './cataphract-source.mjs';
 
 // Use the actor captured by the SAME synchronous board read. game.actors can
 // refer to a different linked actor than an unlinked token's synthetic actor.
@@ -52,7 +54,8 @@ export async function resolvePolicyContext(board,config,{game,crypto=globalThis.
   // in returned context, logs, settings, or anything sent to the model relay.
   const features=(actor.items ?? []).filter(i=>i.type==='npc_feature').map(item=>{
     let source=null;try {source=canonicalRuleSource(item.system);} catch { /* Feature remains a source gap. */ }
-    return {itemId:item._id ?? item.id,lid:item.system?.lid ?? '',sourceVersion:item._stats?.systemVersion ?? 'unrecorded',source};
+    return {itemId:item._id ?? item.id,lid:item.system?.lid ?? '',sourceVersion:item._stats?.systemVersion ?? 'unrecorded',source,
+      destroyed:item.system?.destroyed??null,disabled:item.system?.disabled??null,charged:item.system?.charged??null};
   });
   me.tier=Number(actor.system?.tier);
   me.classIds=classes.map(i=>i.system?.lid ?? '');
@@ -60,7 +63,7 @@ export async function resolvePolicyContext(board,config,{game,crypto=globalThis.
   me.features=await Promise.all(features.map(async f=>{
     const digest=f.source===null ? null : await crypto.subtle.digest('SHA-256',new TextEncoder().encode(f.source));
     cancelled();const sourceFingerprint=digest===null?'unavailable':Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join('');
-    return {lid:f.lid,sourceVersion:f.sourceVersion,sourceFingerprint};
+    return {lid:f.lid,sourceVersion:f.sourceVersion,sourceFingerprint,itemId:f.itemId,destroyed:f.destroyed,disabled:f.disabled,charged:f.charged};
   }));
   cancelled();
   const fullBinding={schemaVersion:1,...binding,policyRevision:policy.revision,sourceBindings:policy.requirements};
@@ -78,13 +81,41 @@ export async function resolvePolicyContext(board,config,{game,crypto=globalThis.
   const ramGap=!ramSource ? 'ram-cannon-unavailable: exact reviewed source is unavailable.'
     : !me.weapons.length ? 'ram-cannon-unavailable: ordinary weapon readiness requires manual play.'
       : !attackBudget.ok ? `ram-cannon-unavailable: ordinary attack budget: ${attackBudget.reason}` : null;
-  const capabilities={ramCannon:{reviewed:ramSource,available:ram},trample:{reviewed:false,available:false},
-    impale:{reviewed:false,available:false},shield:{reviewed:false,available:false}};
+  const ready=cataphractReadiness(me,game.system?.version),history=actor.flags?.[MODULE_ID]?.trampleLedger;
+  const knownHistory=history?.schemaVersion===1&&history.turn===board.turn&&history.known===true&&Array.isArray(history.targets)
+    &&history.targets.every(id=>typeof id==='string'&&id)&&new Set(history.targets).size===history.targets.length;
+  const geometry=board.cataphractGeometry===true&&!!board.carryPositions;
+  const trample=ready.trample.ready&&geometry&&knownHistory;
+  const nativeImpale=board.nativeAutomation?.attacks===true&&board.nativeAutomation?.limited_loading===true
+    &&typeof game.lancer?.flows?.get('SystemFlow')==='function'&&typeof game.lancer?.flows?.get('StatRollFlow')==='function';
+  const capabilities={ramCannon:{reviewed:ramSource,available:ram},
+    trample:{reviewed:ready.trample.sourceVerified,available:trample,itemId:ready.trample.itemId},
+    impale:{reviewed:ready.impale.sourceVerified,available:ready.impale.ready&&trample&&nativeImpale&&canSpend(snapshot.actionBudget,{full:1}).ok,itemId:ready.impale.itemId},
+    shield:{reviewed:ready.shield.sourceVerified,available:ready.shield.ready&&geometry,itemId:ready.shield.itemId}};
+  const nativeTokens=JSON.parse(board.stamp).tokens??[],targetShields={};
+  if(geometry)for(const target of snapshot.tokens.filter(t=>t.id!==me.id)){
+    const entries=nativeTokens.filter(t=>(t.token?._id??t.token?.id)===target.id),native=entries.length===1?entries[0].actor:null;
+    // Unreviewed target passives/immunities cannot be inferred from prose.
+    const basic=native&&(target.excludedWeapons?.length??0)===0&&Array.isArray(native.items)&&native.items.every(i=>['npc_class','npc_feature','mech_weapon'].includes(i.type)
+      &&(i.type!=='npc_feature'||i.system?.type==='Weapon'))&&!(native.effects??[]).some(e=>e.disabled!==true);
+    let exact=false;
+    if(native&&Array.isArray(native.items)&&native.items.some(i=>i.system?.lid==='npcc_cataphract')){
+      const reviewed=await reviewCataphractSource(native,game.system.version,{crypto});cancelled();
+      exact=policy.requirements.every(r=>reviewed.features.some(f=>f.lid===r.lid&&f.sourceVersion===r.sourceVersion&&f.sourceFingerprint===r.sourceFingerprint))
+        &&!(native.effects??[]).some(e=>e.disabled!==true);
+      if(exact&&reviewed.readiness.shield.ready)targetShields[target.id]=reviewed.readiness.shield.itemId;
+    }
+    target.impaleEligible=!!(basic||exact);target.trampleEligible=!!(basic||exact);
+  }
   const coverageGaps=[...resolved.gaps,...sourceMatches.filter(s=>!s.matches).map(s=>`source-unavailable:${s.lid}`),
-    'trample-unavailable: no reviewed pass-through descriptor.',
-    'impale-unavailable: save timing and native continuation remain unresolved.',
-    'shield-support-unavailable: passive distance/effect application remains manual.',
+    ...(!trample?['trample-unavailable: exact ready source, native special geometry and known activation history are required.']:[]),
+    ...(!capabilities.impale.available?['impale-unavailable: ready recharge, Full action, Trample history and native automation/flows are required.']:[]),
+    ...(!capabilities.shield.available?['shield-support-unavailable: exact ready source and native geometry are required.']:[]),
+    'Incoming threat usefulness and reactions remain unknown without supplied reviewed context.',
+    ...(geometry&&snapshot.tokens.some(t=>t.id!==me.id&&t.impaleEligible===false)
+      ?['Target passives, active effects or identities outside the reviewed slice require manual Trample contact and Impale resolution.']:[]),
     ...(ramGap?[ramGap]:[])];
-  return {...base,policy,state:'partial',sourceMatches,capabilities,coverageGaps:[...new Set(coverageGaps)],
+  const grapples=JSON.parse(board.stamp).scene?.flags?.[MODULE_ID]?.grapples??[];
+  return {...base,policy,state:'partial',sourceMatches,capabilities,...(geometry?{specials:{targetShields,grapples}}:{}),coverageGaps:[...new Set(coverageGaps)],
     contextStamp:canonicalData({configuration:config.stamp,sources:sourceMatches})};
 }

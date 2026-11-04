@@ -1,4 +1,6 @@
-// No executable special-ability descriptors have been reviewed yet.
+// Generic catalogue dispatch remains closed pending its broader acceptance.
+// The scoped Cataphract policy path uses independently pinned source/readiness
+// in cataphract.mjs; it does not grant catalogue-wide handlers or support.
 export const NPC_DESCRIPTORS = Object.freeze([]);
 
 // Work obligations, never executable handlers or assertions that a rule was reviewed.

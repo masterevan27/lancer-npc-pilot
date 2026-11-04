@@ -17,11 +17,19 @@ sources:
     resource: ../../foundry-module/scripts/adapter/controller.mjs
   - id: scenarios
     resource: ../../foundry-module/test/fixtures/policies/cataphract-v1.json
+  - id: later-live-acceptance
+    resource: 2026-11-03-policy-acceptance.md
 generated:
   by: codex/unrecorded
-  at: 2026-11-03T08:49:09.295Z
+  at: 2026-11-03T18:26:00Z
 ---
 # Module policy selector evidence
+
+Historical implementation evidence follows. A later owner-authorized
+[disposable-world acceptance pass](2026-11-03-policy-acceptance.md) staged
+0.8.0, captured its policy UI and verified the scoped ordinary native path.
+Its results supersede the runtime-authorization and screenshot blockers below
+for that pass only; special mechanics and broader acceptance remain open.
 
 Scope: implement the approved selector plan in the existing
 `codex/tactical-roadmap` worktree, based on `dc6f3b90d2ae03fdce3a5bd09ed21b999628ca46`.

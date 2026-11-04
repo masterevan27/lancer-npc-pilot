@@ -15,8 +15,10 @@
 //     if wrecks should obstruct.
 //   - Native per-anchor occupied cells govern every body cell. Large hex
 //     tokens without native cells are refused, never approximated.
-//   - Not modelled: engagement, Disengage, reactions (Overwatch) on the way,
-//     elevation, flying, teleporting, being pushed.
+//   - Adapter-supplied engagement edges are distinct from wall edges. Only an
+//     explicitly reviewed context can ignore engagement or pass through bodies.
+//   - Not modelled: Disengage, reactions (Overwatch), elevation, flying,
+//     teleporting or generic forced-movement rules.
 
 import { cellKey, tokenFootprint, translateCell, inBounds, neighbors, parseKey } from './grid.mjs';
 import { areEnemies, isDefeated } from './snapshot.mjs';
@@ -26,7 +28,7 @@ import { areEnemies, isDefeated } from './snapshot.mjs';
  * @param {import('./snapshot.mjs').Snapshot} snap
  * @param {import('./snapshot.mjs').Token} mover
  */
-export function movementContext(snap, mover) {
+export function movementContext(snap, mover, { passCharacters = false, ignoreEngagement = false } = {}) {
   const grid = snap.grid;
   const blocked = new Set(snap.blocked ?? []);
   const blockedMoves = new Set(snap.blockedMoves ?? []);
@@ -44,7 +46,9 @@ export function movementContext(snap, mover) {
       if (!occupied.has(k) || kind !== 'ally') occupied.set(k, kind);
     }
   }
-  return { grid, blocked, blockedMoves, blockedAnchorMoves: new Set(snap.blockedAnchorMoves ?? []), difficult, occupied, size: mover.size, mover };
+  return { grid, blocked, blockedMoves, blockedAnchorMoves: new Set(snap.blockedAnchorMoves ?? []),
+    engagementMoves: new Set(snap.engagementMoves ?? []), passCharacters: passCharacters === true,
+    ignoreEngagement: ignoreEngagement === true, difficult, occupied, size: mover.size, mover };
 }
 
 /** Can the mover's footprint stand on (pass through) anchor `c`? */
@@ -56,7 +60,7 @@ export function canPass(ctx, c) {
     const k = cellKey(f);
     if (ctx.blocked.has(k)) return false;
     const occ = ctx.occupied.get(k);
-    if (occ === 'enemy' || occ === 'neutral') return false;
+    if (!ctx.passCharacters && (occ === 'enemy' || occ === 'neutral')) return false;
   }
   return true;
 }
@@ -73,6 +77,7 @@ export function canEnd(ctx, c) {
 /** Cost of stepping from anchor a to adjacent anchor b, or null if illegal. */
 export function stepCost(ctx, a, b) {
   if (ctx.blockedAnchorMoves.has(`${cellKey(a)}>${cellKey(b)}`)) return null;
+  if (!ctx.ignoreEngagement && ctx.engagementMoves.has(`${cellKey(a)}>${cellKey(b)}`)) return null;
   if (!canPass(ctx, b)) return null;
   const dx = b.x - a.x;
   const dy = b.y - a.y;
@@ -97,11 +102,11 @@ export function stepCost(ctx, a, b) {
 }
 
 /** Exact approved route cost, including every occupied cell and directed step. */
-export function pathCost(snap, tokenId, path) {
+export function pathCost(snap, tokenId, path, exceptions = {}) {
   const mover = snap.tokens.find(t => t.id === tokenId);
   if (!mover || !Array.isArray(path) || path.length === 0
     || path[0]?.x !== mover.pos.x || path[0]?.y !== mover.pos.y) return null;
-  const ctx = movementContext(snap, mover);
+  const ctx = movementContext(snap, mover, exceptions);
   let total = 0;
   for (let i = 1; i < path.length; i++) {
     const a = path[i - 1], b = path[i];
@@ -133,7 +138,7 @@ export function reachableCells(snap, tokenId, opts = {}) {
   const mover = snap.tokens.find((t) => t.id === tokenId);
   if (!mover) throw new Error(`no token "${tokenId}"`);
   const maxCost = Math.max(0, Math.floor(opts.maxCost ?? mover.speed));
-  const ctx = movementContext(snap, mover);
+  const ctx = movementContext(snap, mover, opts);
   const start = { x: mover.pos.x, y: mover.pos.y };
   const startKey = cellKey(start);
   const best = new Map([[startKey, 0]]);

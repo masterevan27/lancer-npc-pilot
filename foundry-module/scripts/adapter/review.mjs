@@ -18,7 +18,10 @@ export function renderReview(review, canExecute) {
     <fieldset><legend>Ranked alternatives — pick one to execute</legend>${review.options.map(o =>
       `<label class="npc-pilot-option"><input type="radio" name="option" value="${escapeHtml(o.id)}" ${o.id === review.choice.optionId ? 'checked' : ''}>
       <span><strong>${escapeHtml(o.id)} · score ${Number(o.score).toFixed(2)}</strong><br>${escapeHtml(describeOption(o))}
-      ${o.move ? `<small>Route: ${escapeHtml(o.move.path.map(p => `(${p.x},${p.y})`).join(' → '))}</small>` : ''}</span></label>`).join('')}</fieldset>
+      ${o.move ? `<small>Route: ${escapeHtml(o.move.path.map(p => `(${p.x},${p.y})`).join(' → '))}</small>` : ''}
+      ${o.action.kind==='impale'?`<small>Pause before save: ${escapeHtml(`(${o.move.path[o.action.pauseIndex].x},${o.move.path[o.action.pauseIndex].y})`)}. On failed save, target route: ${escapeHtml(o.action.carryPath.map(p=>`(${p.x},${p.y})`).join(' → '))}</small>`:''}
+      ${o.mechanics?.grapple?`<small>Grappled partner route: ${escapeHtml(o.mechanics.grapple.carriedPath.map(p=>`(${p.x},${p.y})`).join(' → '))}</small>`:''}
+      ${o.facts.trampleContacts?.length?`<small>Potential Trample contacts (native mitigation and existing turn claims apply): ${o.facts.trampleContacts.map(c=>escapeHtml(review.snapshot.tokens.find(t=>t.id===c.tokenId)?.name??c.tokenId)).join(', ')}</small>`:''}</span></label>`).join('')}</fieldset>
     <ul class="npc-pilot-warnings">${review.warnings.map(w => `<li>${escapeHtml(w)}</li>`).join('')}</ul>
   </section>`;
 }
