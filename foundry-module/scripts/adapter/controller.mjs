@@ -136,7 +136,7 @@ export class PilotController {
 }
 
 /** Browser -> local relay. API keys never enter this interface. */
-export async function requestDecision(payload, settings, { fetchImpl = fetch, signal, timeoutMs } = {}) {
+export async function requestDecision(payload, settings, { fetchImpl = fetch, signal, timeoutMs, maxTokens = 1500, temperature } = {}) {
   const url = new URL(settings.relayUrl);
   if (url.username || url.password || url.search || url.hash || url.pathname !== '/')
     throw Error('Use a relay origin without credentials, path, query or fragment.');
@@ -151,7 +151,8 @@ export async function requestDecision(payload, settings, { fetchImpl = fetch, si
     response = await fetchImpl(new URL('/v1/decide', url).href, { method: 'POST', redirect: 'error',
       credentials: 'omit', cache: 'no-store', signal: requestSignal,
       headers: { 'Content-Type': 'application/json', 'X-Pilot-Secret': settings.secret },
-      body: JSON.stringify({ ...payload, provider: settings.provider, model: settings.model || undefined, maxTokens: 1500 }) });
+      body: JSON.stringify({ ...payload, provider: settings.provider, model: settings.model || undefined, maxTokens,
+        ...(temperature === undefined ? {} : { temperature }) }) });
   } catch {
     if (signal?.aborted) throw Error('Planning cancelled.');
     if (timeout.aborted) throw Error('Model request timed out. No action was taken.');

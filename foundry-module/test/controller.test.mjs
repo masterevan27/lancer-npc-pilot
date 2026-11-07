@@ -121,3 +121,13 @@ test('requestDecision honours an explicit timeoutMs', async () => {
     {relayUrl:'http://127.0.0.1:5090',secret:'s',provider:'openai'}, {fetchImpl, timeoutMs: 20}), /timed out/);
   assert(aborted);
 });
+
+test('requestDecision sends 1500 tokens and no temperature by default, and honours overrides', async () => {
+  const bodies = [];
+  const fetchImpl = async (url, init) => { bodies.push(JSON.parse(init.body)); return { ok: true, json: async () => ({ text: 'x' }) }; };
+  const settings = { relayUrl: 'http://127.0.0.1:5090', secret: 's', provider: 'openai', model: 'm' };
+  await requestDecision({ messages: [] }, settings, { fetchImpl });
+  await requestDecision({ messages: [] }, settings, { fetchImpl, maxTokens: 120, temperature: 0.9 });
+  assert.equal(bodies[0].maxTokens, 1500); assert.equal('temperature' in bodies[0], false);
+  assert.equal(bodies[1].maxTokens, 120); assert.equal(bodies[1].temperature, 0.9);
+});
