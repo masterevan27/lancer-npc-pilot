@@ -8,3 +8,18 @@
 .npc-pilot-dialog .dialog-form { flex: 1; min-height: 0; }
 .npc-pilot-dialog .dialog-content { flex: 1; min-height: 0; overflow-y: auto; }
 .npc-pilot-dialog footer { flex: 0 0 auto; flex-wrap: wrap; }
+
+/* NPC turn banner (shared across clients). Only the End-turn button takes pointer events. */
+.npc-pilot-banner { --npc-pilot-base: #8f1414; --npc-pilot-gold: #ffcc00; position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 70; display: flex; align-items: center; pointer-events: none; max-width: min(720px, 92vw); }
+.npc-pilot-banner--hostile { --npc-pilot-base: #8f1414; }
+.npc-pilot-banner--friendly { --npc-pilot-base: #1b5e35; }
+.npc-pilot-banner__portrait { flex: none; width: 74px; height: 74px; border-radius: 50%; object-fit: cover; border: 3px solid var(--npc-pilot-gold); background: #111; box-shadow: 0 2px 8px rgba(0,0,0,.6); margin-right: -26px; position: relative; z-index: 2; }
+.npc-pilot-banner__body { position: relative; overflow: hidden; display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 28px 8px 40px; background: var(--npc-pilot-base); border-left: 6px solid var(--npc-pilot-gold); color: #fff; transform: skewX(-12deg); box-shadow: 0 2px 10px rgba(0,0,0,.55); }
+.npc-pilot-banner__text { transform: skewX(12deg); min-width: 0; }
+.npc-pilot-banner__title { font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 1.05rem; }
+.npc-pilot-banner__subtitle { font-size: .8rem; opacity: .85; }
+.npc-pilot-banner__quote { font-style: italic; font-size: .95rem; margin-top: 2px; }
+.npc-pilot-banner__end { pointer-events: auto; transform: skewX(12deg); flex: none; width: auto; margin: 0; padding: 4px 12px; cursor: pointer; }
+.npc-pilot-banner--thinking .npc-pilot-banner__body::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); transform: translateX(-100%); animation: npc-pilot-sweep 1.8s linear infinite; pointer-events: none; }
+@keyframes npc-pilot-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+.npc-pilot-banner--speech .npc-pilot-banner__body { background: #15171c; border-top: 3px solid var(--npc-pilot-base); border-bottom: 3px solid var(--npc-pilot-base); }

@@ -10,5 +10,6 @@
   "authors": [{ "name": "Evan" }],
   "esmodules": ["scripts/pilot.mjs"],
   "styles": ["styles/pilot.css"],
+  "socket": true,
   "relationships": { "systems": [{ "id": "lancer", "type": "system", "compatibility": { "minimum": "3.1.3" } }] }
 }
