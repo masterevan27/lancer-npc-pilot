@@ -165,3 +165,30 @@ test('plan throwing holds without ending the turn', async () => {
   assert.equal(await createTurnRunner(d).run('k'), 'held');
   assert.ok(!d.calls.includes('endTurn'));
 });
+
+test('endTurnAnyway after cancel does not end the turn', async () => {
+  const d = rig({review: mkReview(moveOption)});
+  const runner = createTurnRunner(d);
+  await runner.run('k');
+  const e = rig();
+  const d2 = rig({done: new Promise(() => {})});
+  const r2 = createTurnRunner(d2);
+  const p = r2.run('k');
+  await wait(10);
+  r2.cancel();
+  await p;
+  await r2.endTurnAnyway();
+  assert.ok(!d2.calls.includes('endTurn'));
+});
+
+test('endTurn rejecting whispers the original error without an invalid transition', async () => {
+  const d = rig({review: mkReview(moveOption)});
+  const whispers = [];
+  d.whisperGM = t => whispers.push(t);
+  d.endTurn = async () => { throw new Error('advance failed'); };
+  const r = await createTurnRunner(d).run('k');
+  assert.equal(r, 'held');
+  assert.equal(whispers.length, 1);
+  assert.match(whispers[0], /advance failed/);
+  assert.ok(!whispers[0].includes('Invalid turn transition'));
+});

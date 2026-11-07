@@ -23,6 +23,7 @@ export function createTurnRunner({
 
   function cancelCtx(ctx) {
     if (ctx.aborted) return;
+    ctx.cancelled = true;
     teardown(ctx);
     safe(() => controller.cancel());
     safe(() => banner.clear());
@@ -40,7 +41,7 @@ export function createTurnRunner({
 
     const hold = (why, review) => {
       if (ctx.aborted) return exit();
-      lc.hold(why);
+      safe(() => lc.hold(why));
       teardown0();
       safe(() => whisperGM(why));
       safe(() => banner.show(bannerView({kind: 'held', name: ctx.info?.name ?? 'NPC', why, side: ctx.info?.side, portrait: ctx.info?.portrait})));
@@ -113,7 +114,13 @@ export function createTurnRunner({
       }
 
       ctx.ended = true;
-      await endTurn();
+      try {
+        await endTurn();
+      } catch (err) {
+        ctx.ended = false;
+        log(`NPC Pilot: could not end the turn: ${err?.message ?? err}`);
+        return hold(`Could not end the turn: ${err?.message ?? err}`);
+      }
       return 'done';
     } catch (err) {
       return hold(err?.message ?? String(err));
@@ -122,7 +129,7 @@ export function createTurnRunner({
 
   async function endTurnAnyway() {
     const ctx = current;
-    if (!ctx || ctx.ended) return;
+    if (!ctx || ctx.ended || ctx.cancelled) return;
     ctx.ended = true;
     ctx.forced = true;
     safe(() => ctx.lifecycle.forceEnd());
