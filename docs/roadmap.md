@@ -29,9 +29,11 @@ sources:
     resource: review-evidence/2026-11-03-cataphract-implementation.md
   - id: cataphract-native
     resource: review-evidence/2026-11-03-cataphract-native-acceptance.md
+  - id: auto-banter-design
+    resource: superpowers/specs/2026-11-07-auto-mode-and-banter-design.md
 generated:
-  by: codex/unrecorded
-  at: 2026-11-04T02:11:23.365Z
+  by: claude/claude-opus-5-5
+  at: 2026-11-07T06:30:00.000Z
 ---
 # NPC mechanics and tactical behavior roadmap
 
@@ -77,6 +79,80 @@ The Long Rim was independently reviewed for this roadmap. Later policy work
 must identify the applicable source/version and resolve installed-data or
 errata discrepancies explicitly. Do not track full copyrighted rule exports.
 No pinned OKF bundle/checker is present; its adoption remains outside this task.
+
+## Priority milestone: playable 2v2
+
+The owner set this priority on November 7, 2026: a match that is playable at the
+table as two humans against two AI-controlled NPCs, or one human plus one AI
+teammate (a friendly-disposition NPC) against two AI NPCs. This milestone comes
+before whole-roster acceptance. It does not relax any anti-goal or shared safety
+contract, and it reuses the Phase 1 cards below where they overlap rather than
+replacing them. The [auto mode and banter design](superpowers/specs/2026-11-07-auto-mode-and-banter-design.md)
+covers the first two cards. Dashboard line ID: `playable-2v2`.
+
+### play-auto-mode: Hands-off NPC turns with a shared turn banner
+
+Status: design agreed with the owner on November 7; not implemented.
+
+Acceptance: an off-by-default GM setting plans and executes NPC turns without the
+review dialog, using the existing legality, stale-board and replay guards. Any
+refusal, missing input or changed board falls back to GM review or a held turn,
+never a guess. Rolls stay in Lancer's native windows, clicked by a human unless the
+separate off-by-default auto-roll option presses Lancer's own buttons. Auto mode
+ends only its own NPC's turn, after observed applied damage or a resolved miss,
+with an "End turn anyway" control; it never activates the next combatant. In model
+mode, a relay failure or a 30-second silence plays the top-scoring safe option, and
+a warm-up request with a notification readies the local model when the module
+loads. Every client sees the agreed angled banner with
+the round token/pilot portrait, a continuous ~1.8 s sweep while thinking, a brief
+acting summary, and red/green side colours. Pure state-machine tests plus a
+disposable-world pass with one hostile and one friendly NPC.
+
+### play-banter: Situational in-character lines before and after resolution
+
+Status: design agreed with the owner on November 7; not implemented.
+Depends on reading native attack outcomes (new, read-only).
+
+Acceptance: an off-by-default toggle produces up to two lines per NPC turn — an
+intent line before the roll that never claims an outcome, and a reaction line
+written only from the outcome Lancer recorded (none when ambiguous). Repeats and
+near-repeats are suppressed. Lines appear as a speech banner with the speaker's
+portrait and as an in-character chat message. Generation never blocks or changes
+the turn; failure drops the line. The local model is the default; paid providers
+need explicit selection. The key stays relay-side.
+
+### play-full-turns: Complete NPC turns
+
+Status: planned. Same scope as `mechanics-sequences` (Chunk 3), prioritized.
+
+Acceptance: plan and execute move plus two quick actions or one full action as a
+confirmed ordered sequence, advancing dependent steps only from confirmed native
+results, under the `mechanics-sequences` acceptance criteria.
+
+### play-engagement: Engaged NPCs can still act
+
+Status: planned. Draws on `mechanics-legality`.
+
+Acceptance: an NPC that starts its turn engaged can choose Disengage, fight where
+it stands, or move under the engagement rules, instead of requiring manual
+movement. Hostile and friendly NPCs are both covered by tests.
+
+### play-roster: A small curated encounter roster
+
+Status: planned. A subset of `tactics-roster`.
+
+Acceptance: the T1 Cataphract plus two or three contrasting classes whose kits are
+mostly supported ordinary weapons play their full T1 kit, with every unsupported
+feature still named in warnings. Friendly-disposition use of each is tested.
+
+### play-release: Publish and playtest
+
+Status: planned. Depends on the cards above.
+
+Acceptance: a version is published through the existing release workflow with the
+owner's push authorization, installed in a disposable copy of the campaign world,
+and a full 2v2 match is played in both configurations. Findings are recorded as
+evidence; the original campaign world is not mutated without explicit authority.
 
 ## Phase 1: Finish the existing mechanics foundation
 
@@ -292,6 +368,11 @@ score or a passing schema test. Accept individual batches without claiming the
 unfinished roster is complete.
 
 ## Delivery order and verification
+
+As of November 7, 2026 the playable 2v2 milestone comes first: auto mode and
+banter, then full turns and engagement, then the curated roster, release and
+playtest. Phase 1–3 work continues behind it where the milestone does not already
+cover it.
 
 The approved contract and 0.8.0 selector implementation are locally landed.
 The owner authorized the disposable-world pass on November 3. Its
