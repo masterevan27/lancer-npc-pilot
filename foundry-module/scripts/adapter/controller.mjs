@@ -45,9 +45,13 @@ export class PilotController {
       const gone = () => epoch !== this.#epoch || signal.aborted;
       const autoFallback = error => ({ status: 'fallback', source: 'fallback', optionId: options[0].id,
         reason: AUTO_FALLBACK_REASON, line: '', error });
+      // Auto mode has ONE overall budget; a retry only gets whatever time is left.
+      const deadline = Date.now() + AUTO_MODEL_TIMEOUT_MS;
       for (let attempt = 0; attempt < 2; attempt++) {
         let text;
-        try { text = await this.request(structuredClone(payload), auto ? { signal, timeoutMs: AUTO_MODEL_TIMEOUT_MS } : { signal }); }
+        const remaining = attempt === 0 ? AUTO_MODEL_TIMEOUT_MS : deadline - Date.now();
+        if (auto && remaining <= 0) { choice = autoFallback('The model did not answer within the planning budget.'); break; }
+        try { text = await this.request(structuredClone(payload), auto ? { signal, timeoutMs: remaining } : { signal }); }
         catch (e) {
           if (!auto) throw e;
           if (gone()) throw Error('Planning was cancelled or superseded.');

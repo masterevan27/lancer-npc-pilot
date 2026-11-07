@@ -131,3 +131,34 @@ test('requestDecision sends 1500 tokens and no temperature by default, and honou
   assert.equal(bodies[0].maxTokens, 1500); assert.equal('temperature' in bodies[0], false);
   assert.equal(bodies[1].maxTokens, 120); assert.equal(bodies[1].temperature, 0.9);
 });
+
+import { mock } from 'node:test';
+
+test('auto planning shares one 30 s deadline across the retry (final review 9)', async () => {
+  mock.timers.enable({ apis: ['Date'] });
+  try {
+    const seen = [];
+    const { controller } = setup(async (_p, o) => { seen.push(o.timeoutMs); mock.timers.tick(20000); return '{"option":"evil"}'; });
+    const review = await controller.plan({ auto: true });
+    assert.deepEqual(seen, [30000, 10000], 'the retry only gets the remaining budget');
+    assert.equal(review.choice.source, 'fallback');
+  } finally { mock.timers.reset(); }
+});
+
+test('auto planning falls back without a second request once the budget is spent (final review 9)', async () => {
+  mock.timers.enable({ apis: ['Date'] });
+  try {
+    let count = 0;
+    const { controller } = setup(async () => { count++; mock.timers.tick(30000); return '{"option":"evil"}'; });
+    const review = await controller.plan({ auto: true });
+    assert.equal(count, 1);
+    assert.equal(review.choice.source, 'fallback');
+    assert.equal(review.choice.optionId, review.options[0].id);
+  } finally { mock.timers.reset(); }
+});
+
+test('approved planning gives each attempt a fresh request without an auto deadline (final review 9)', async () => {
+  const seen = []; const { controller } = setup(async (_p, o) => { seen.push(o.timeoutMs); return '{"option":"evil"}'; });
+  await controller.plan();
+  assert.deepEqual(seen, [undefined, undefined]);
+});

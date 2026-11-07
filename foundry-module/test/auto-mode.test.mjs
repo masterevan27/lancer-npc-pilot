@@ -54,3 +54,13 @@ test('lifecycle: illegal moves throw and start resets from any state', () => {
   assert.equal(l.start('b'), 'thinking');
   assert.equal(l.turnKey, 'b');
 });
+
+test('start(newKey) clears a previous hold, stores the key and returns thinking (final review 12)', () => {
+  const l = new TurnLifecycle();
+  l.start('old'); l.decided(); l.hold('stuck');
+  assert.equal(l.state, 'held'); assert.equal(l.holdReason, 'stuck');
+  assert.equal(l.start('new'), 'thinking');
+  assert.equal(l.holdReason, null);
+  assert.equal(l.turnKey, 'new');
+  assert.equal(l.state, 'thinking');
+});
