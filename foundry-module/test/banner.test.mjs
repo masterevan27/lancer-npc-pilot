@@ -21,6 +21,14 @@ test('acting view', () => {
   assert.equal(v.showEndTurn, false);
   assert.equal(v.side, 'friendly');
 });
+test('waiting view keeps End turn on screen', () => {
+  const v = bannerView({...base, kind:'waiting', side:'hostile'});
+  assert.equal(v.title, 'Raider · Striker is waiting for Lancer');
+  assert.equal(v.subtitle, 'Resolve the attack and apply damage');
+  assert.equal(v.showEndTurn, true);
+  assert.equal(v.autoHideMs, null);
+  assert.equal(v.side, 'hostile');
+});
 test('speech view', () => {
   const v = bannerView({...base, kind:'speech', line:'Die!'});
   assert.equal(v.title, 'Raider');

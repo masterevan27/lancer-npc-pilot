@@ -19,7 +19,8 @@ function rig(over = {}) {
       approve: async () => { calls.push('approve'); if (over.approveThrows) throw new Error('boom'); return 'approveResult' in over ? over.approveResult : {status: 'handed-to-lancer'}; },
       cancel: () => calls.push('controller.cancel'),
     },
-    banner: {show: v => banners.push(v.kind), clear: () => banners.push('clear')},
+    banner: {show: v => { banners.push(v.kind); d.views.push(v); }, clear: () => banners.push('clear')}, views: [],
+    actingMs: 5,
     observe: () => { calls.push('observe'); return {done: over.done ?? Promise.resolve({status: 'applied'}), dispose: () => calls.push('dispose')}; },
     endTurn: async () => { calls.push('endTurn'); },
     whisperGM: () => calls.push('whisper'),
@@ -191,4 +192,27 @@ test('endTurn rejecting whispers the original error without an invalid transitio
   assert.equal(whispers.length, 1);
   assert.match(whispers[0], /advance failed/);
   assert.ok(!whispers[0].includes('Invalid turn transition'));
+});
+
+test('waiting banner with End turn is shown while the attack awaits resolution, and End turn ends once', async () => {
+  const d = rig({done: new Promise(() => {})});
+  const runner = createTurnRunner(d);
+  const p = runner.run('k');
+  await wait(40);
+  const last = d.views.at(-1);
+  assert.equal(last.kind, 'waiting');
+  assert.equal(last.showEndTurn, true);
+  assert.equal(last.autoHideMs, null);
+  await runner.endTurnAnyway();
+  assert.equal(await p, 'done');
+  assert.equal(d.calls.filter(c => c === 'endTurn').length, 1);
+  assert.equal(d.banners.at(-1), 'clear');
+});
+
+test('no waiting banner appears once the outcome resolves quickly', async () => {
+  const d = rig();
+  const runner = createTurnRunner(d);
+  assert.equal(await runner.run('k'), 'done');
+  await wait(20);
+  assert.ok(!d.banners.includes('waiting'));
 });

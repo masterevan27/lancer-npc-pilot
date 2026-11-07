@@ -25,6 +25,11 @@ export function bannerView({kind, name, className, side, round, portrait, summar
       view.subtitle = summary || '';
       view.autoHideMs = 3000;
       break;
+    case 'waiting':
+      view.title = `${who} is waiting for Lancer`;
+      view.subtitle = 'Resolve the attack and apply damage';
+      view.showEndTurn = true;
+      break;
     case 'speech':
       view.title = `${name}`;
       view.quote = line ?? '';

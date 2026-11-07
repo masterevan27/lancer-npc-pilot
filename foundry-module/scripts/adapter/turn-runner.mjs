@@ -9,7 +9,7 @@ const asyncNoop = async () => {};
 
 export function createTurnRunner({
   controller, banner, observe, endTurn, whisperGM = noop, openReview = noop,
-  speakIntent = asyncNoop, speakReaction = noop, readTurnInfo, log = noop,
+  speakIntent = asyncNoop, speakReaction = noop, readTurnInfo, log = noop, actingMs = 3000,
 } = {}) {
   let current = null;
 
@@ -17,6 +17,7 @@ export function createTurnRunner({
 
   function teardown(ctx) {
     ctx.aborted = true;
+    if (ctx.waitTimer) { clearTimeout(ctx.waitTimer); ctx.waitTimer = null; }
     ctx.wake();
     if (ctx.observer) { const o = ctx.observer; ctx.observer = null; safe(() => o.dispose()); }
   }
@@ -49,6 +50,7 @@ export function createTurnRunner({
       return 'held';
     };
     const teardown0 = () => {
+      if (ctx.waitTimer) { clearTimeout(ctx.waitTimer); ctx.waitTimer = null; }
       if (ctx.observer) { const o = ctx.observer; ctx.observer = null; safe(() => o.dispose()); }
     };
 
@@ -98,6 +100,12 @@ export function createTurnRunner({
       lc.handedOff({expectsAttack: isAttack});
 
       if (isAttack) {
+        // The acting summary fades after its display time; keep an End turn control on screen for the rest of the wait.
+        ctx.waitTimer = setTimeout(() => {
+          ctx.waitTimer = null;
+          if (ctx.aborted) return;
+          safe(() => banner.show(bannerView({kind: 'waiting', name: info.name, className: info.className, side: info.side, portrait: info.portrait})));
+        }, actingMs);
         let outcome;
         try {
           outcome = await Promise.race([ctx.observer.done, abortSignal]);
