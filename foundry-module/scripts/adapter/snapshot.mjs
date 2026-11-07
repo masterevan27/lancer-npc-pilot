@@ -64,7 +64,7 @@ export function readToken(token, grid, geometry = tokenGeometry(token, grid)) {
     hull: Number.isFinite(s.hull) ? s.hull : null, statuses: [...(actor.statuses ?? [])],
     resistances: Object.entries(s.resistances ?? {}).filter(([, v]) => v === true).map(([k]) => k),
     weapons, excludedWeapons, persona: String(actor.getFlag?.(MODULE_ID, 'persona') ?? '').slice(0, 2000),
-    defeated: Boolean(s.destroyed) };
+    defeated: Boolean(s.destroyed), gmHidden: d.hidden === true };
 }
 
 /** Read-only, synchronous extraction: no animation or document mutation during planning. */

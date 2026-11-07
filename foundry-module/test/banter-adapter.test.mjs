@@ -100,3 +100,61 @@ test('reaction is not filtered by claimsOutcome', async () => {
 test('chat content is HTML-escaped', () => {
   assert.equal(chatContent('a <b>&"x"</b>'), '<p>a &lt;b&gt;&amp;&quot;x&quot;&lt;/b&gt;</p>');
 });
+
+test('cancelPending while a request is pending publishes no chat and no banner (final review 8)', async () => {
+  const s = setup();
+  let release; const gate = new Promise(r => { release = r; });
+  const base = s.banter;
+  const b2 = createBanter({ request: async () => { await gate; return 'Hold still, Cicada.'; }, postChat: async (l, t) => s.chats.push({ l, t }),
+    banner: { show: v => s.banners.push(v) }, readSnapshot: () => snapshot,
+    readSpeaker: id => ({ actorId: 'actor-' + id, name: 'S', className: 'x', side: 'hostile', round: 1, portrait: 'p', token: { id } }),
+    settings: () => ({ enabled: true, provider: 'openai', model: '', relayUrl: 'x', secret: 'x' }), log: m => s.logs.push(m) });
+  const p = b2.speakIntent(policyReview, option);
+  b2.cancelPending(); release(); await p;
+  assert.equal(s.chats.length, 0); assert.equal(s.banners.length, 0);
+  assert.equal(b2.recent.get('actor-a'), undefined, 'cancelled line is not remembered');
+  void base;
+  release(); await b2.speakIntent(policyReview, option);
+  assert.equal(s.chats.length, 1, 'later speech after cancel works');
+});
+
+test('cancelPending during postChat suppresses the banner (final review 8)', async () => {
+  const s = { chats: [], banners: [] };
+  let release; const gate = new Promise(r => { release = r; });
+  const b = createBanter({ request: async () => 'Stay put, Cicada.', postChat: async () => { await gate; s.chats.push(1); },
+    banner: { show: v => s.banners.push(v) }, readSnapshot: () => snapshot,
+    readSpeaker: id => ({ actorId: 'actor-' + id, name: 'S', className: 'x', side: 'hostile', round: 1, portrait: 'p', token: { id } }),
+    settings: () => ({ enabled: true }), log() {} });
+  const p = b.speakIntent(policyReview, option);
+  await new Promise(r => setTimeout(r, 5)); b.cancelPending(); release(); await p;
+  assert.equal(s.banners.length, 0);
+});
+
+test('a line is remembered only after it was posted (final review 10)', async () => {
+  const s = setup(); let fail = true;
+  const b = createBanter({ request: async () => 'Hold still, Cicada.', postChat: async () => { if (fail) throw Error('chat down'); },
+    banner: { show() {} }, readSnapshot: () => snapshot,
+    readSpeaker: id => ({ actorId: 'actor-' + id, name: 'S', className: 'x', side: 'hostile', round: 1, portrait: 'p', token: { id } }),
+    settings: () => ({ enabled: true }), log: m => s.logs.push(m) });
+  await b.speakIntent(policyReview, option);
+  assert.equal(b.recent.get('actor-a'), undefined);
+  fail = false; await b.speakIntent(policyReview, option);
+  assert.deepEqual(b.recent.get('actor-a'), ['Hold still, Cicada.'], 'not suppressed as a repeat');
+});
+
+test('a malformed outcome is logged and dropped, never thrown (final review 11)', async () => {
+  const s = setup();
+  await s.banter.speakReaction({ status: 'applied', targets: 5 }, 'a');
+  await s.banter.speakReaction({ get status() { throw Error('bad outcome'); } }, 'a');
+  assert.equal(s.chats.length, 0);
+  assert(s.logs.some(l => /bad outcome/.test(l)));
+});
+
+test('a reaction that contradicts the recorded outcome is dropped (final review 4)', async () => {
+  const s = setup({ replies: ['I killed Cicada.'] });
+  await s.banter.speakReaction(miss, 'a');
+  assert.equal(s.chats.length, 0);
+  const t = setup({ replies: ['Lucky, Cicada.'] });
+  await t.banter.speakReaction(miss, 'a');
+  assert.equal(t.chats.length, 1);
+});

@@ -9,7 +9,7 @@ const asyncNoop = async () => {};
 
 export function createTurnRunner({
   controller, banner, observe, endTurn, whisperGM = noop, openReview = noop,
-  speakIntent = asyncNoop, speakReaction = noop, readTurnInfo, log = noop, actingMs = 3000,
+  speakIntent = asyncNoop, speakReaction = noop, cancelBanter = noop, readTurnInfo, log = noop, actingMs = 3000,
 } = {}) {
   let current = null;
 
@@ -26,6 +26,8 @@ export function createTurnRunner({
     if (ctx.aborted) return;
     ctx.cancelled = true;
     teardown(ctx);
+    // A turn that ended normally keeps its in-flight reaction line; any other cancel silences banter.
+    if (!(ctx.ended && !ctx.forced)) safe(() => cancelBanter());
     safe(() => controller.cancel());
     safe(() => banner.clear());
     safe(() => ctx.lifecycle.cancel());
@@ -147,6 +149,7 @@ export function createTurnRunner({
     ctx.forced = true;
     safe(() => ctx.lifecycle.forceEnd());
     teardown(ctx);
+    safe(() => cancelBanter());
     safe(() => banner.clear());
     await endTurn();
   }

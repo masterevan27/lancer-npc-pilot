@@ -64,12 +64,13 @@ function harness(over = {}) {
   env.canvas.scene.tokens = [];
   h.env = env;
   h.fetchOrig = globalThis.fetch;
-  globalThis.fetch = (url) => new Promise((_res, rej) => h.fetches.push(rej));
+  globalThis.fetch = (url, init) => h.fetchImpl ? h.fetchImpl(url, init) : new Promise((_res, rej) => h.fetches.push(rej));
+  h.offs = [];
   globalThis.ChatMessage = undefined;
   h.ChatMessage = { create: async m => { h.chats.push(m); }, getWhisperRecipients: () => ['gm'], getSpeaker: () => ({}) };
-  h.api = initializePilot({ ...env, Hooks: { on: (n, f) => { h.handlers[n] = f; } }, ChatMessage: h.ChatMessage,
+  h.api = initializePilot({ ...env, Hooks: { on: (n, f) => { h.handlers[n] = f; return n; }, off: (n) => { h.offs.push(n); } }, ChatMessage: h.ChatMessage,
     locks: { request: async (k, _o, fn) => { h.locks.push(k); return fn({}); } },
-    DialogV2: { wait: async () => ({ action: 'skip' }), prompt: async () => null },
+    DialogV2: { wait: async (...a) => (h.dialog ? h.dialog(...a) : { action: 'skip' }), prompt: async () => null },
     notifications: { info: m => h.infos.push(m), warn() {}, error: m => h.errors.push(m) } });
   h.turn = n => { env.game.combat.turn = n; h.handlers.updateCombat(env.game.combat, { turn: n }); };
   h.done = () => { globalThis.fetch = h.fetchOrig; };
@@ -139,5 +140,69 @@ test('turning auto mode off during the reservation write never starts the native
     assert.equal(began, 0, 'native attack flow never began');
     assert.equal(h.nextTurns, 0);
     assert(h.chats.some(c => c.whisper), 'GM was told the turn is held');
+  } finally { h.done(); }
+});
+
+// ---- final-review 5: banter in GM-approved play ----
+function approvedRig(over = {}) {
+  const h = harness({ autoMode: false, banterEnabled: true, banterProvider: 'openai', banterModel: '', ...over });
+  const npc = h.env.canvas.tokens.placeables[0], pc = h.env.canvas.tokens.placeables[1];
+  h.began = 0; h.reserved = 0;
+  npc.actor.items[0].beginWeaponAttackFlow = async () => { h.began++; };
+  npc.actor.setFlag = async () => { h.reserved++; };
+  npc.actor.update = async d => { if (d['system.action_tracker']) npc.actor.system.action_tracker = d['system.action_tracker']; };
+  h.env.canvas.tokens.setTargets = async () => {};
+  h.env.canvas.scene.tokens = [{ uuid: 'Scene.scene.Token.pc', actor: pc.actor }];
+  h.banterPrompts = [];
+  h.fetchImpl = async (_url, init) => {
+    const body = JSON.parse(init.body), text = body.messages.map(m => m.content).join(' ');
+    if (/Phase: (intent|reaction)/.test(text)) { h.banterPrompts.push(text); return { ok: true, json: async () => ({ text: h.banterReply ?? 'Hold still, pc.' }) }; }
+    return { ok: true, json: async () => ({ text: '{"option":"A","reason":"closest","line":"Here I come, pc."}' }) };
+  };
+  h.dialog = async () => ({ action: 'execute', optionId: 'A' });
+  globalThis.ChatMessage = h.ChatMessage; globalThis.CONST = { CHAT_MESSAGE_STYLES: { IC: 2 } };
+  const done = h.done; h.done = () => { done(); globalThis.ChatMessage = undefined; delete globalThis.CONST; };
+  return h;
+}
+const speech = h => h.chats.filter(c => c.style === 2).map(c => c.content);
+
+test('banter on: the approved Execute path speaks the intent before the attack and the reaction when it resolves (final review 5)', async () => {
+  const h = approvedRig();
+  try {
+    await tick();
+    await h.api.planTurn(); await tick();
+    assert.equal(h.began, 1, 'the approved attack was handed to Lancer');
+    assert.deepEqual(speech(h), ['<p>Here I come, pc.</p>'], 'intent line spoken once, in character');
+    assert(!h.chats.some(c => c.flavor), 'the executor did not also post the line');
+    h.handlers.createChatMessage({ getFlag: (s, k) => (s === 'lancer' && k === 'attackData'
+      ? { origin: 'a-npc', attackerItemUuid: 'Actor.a-npc.Item.rifle', targets: [{ uuid: 'Scene.scene.Token.pc', hit: false }] } : undefined) });
+    await tick();
+    assert.equal(h.banterPrompts.length, 1, 'one reaction request');
+    assert.deepEqual(speech(h), ['<p>Here I come, pc.</p>', '<p>Hold still, pc.</p>']);
+    assert.equal(h.nextTurns, 0, 'approved play never advances the turn');
+  } finally { h.done(); }
+});
+
+test('banter off: approved play is unchanged, the executor posts the line (final review 5)', async () => {
+  const h = approvedRig({ banterEnabled: false });
+  try {
+    await tick();
+    await h.api.planTurn(); await tick();
+    assert.equal(h.began, 1);
+    assert.deepEqual(speech(h), []);
+    assert.equal(h.chats.filter(c => c.flavor === 'NPC intent — before resolution').length, 1);
+    assert.equal(h.banterPrompts.length, 0);
+  } finally { h.done(); }
+});
+
+test('a turn change after an approved attack disposes the observer and silences its reaction (final review 5)', async () => {
+  const h = approvedRig();
+  try {
+    await tick();
+    await h.api.planTurn(); await tick();
+    h.offs.length = 0;
+    h.handlers.updateCombat(h.env.game.combat, { turn: 5 }); await tick();
+    assert(h.offs.includes('createChatMessage') && h.offs.includes('updateActor'), 'observer hooks removed');
+    assert.deepEqual(speech(h), ['<p>Here I come, pc.</p>']);
   } finally { h.done(); }
 });

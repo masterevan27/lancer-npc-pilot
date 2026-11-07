@@ -238,3 +238,19 @@ test('an attack-cancelled hand-off holds the turn instead of completing it (fina
   assert.ok(!d.calls.includes('speakReaction'));
   assert.ok(d.calls.includes('dispose'));
 });
+
+test('cancel and End turn anyway cancel pending banter; a naturally ended turn keeps its reaction (final review 8)', async () => {
+  const d1 = rig({done: new Promise(() => {})}); d1.cancelBanter = () => d1.calls.push('cancelBanter');
+  const r1 = createTurnRunner(d1); const p1 = r1.run('k'); await wait(20);
+  r1.cancel(); await p1;
+  assert.ok(d1.calls.includes('cancelBanter'), 'cancel');
+  const d2 = rig({done: new Promise(() => {})}); d2.cancelBanter = () => d2.calls.push('cancelBanter');
+  const r2 = createTurnRunner(d2); const p2 = r2.run('k'); await wait(20);
+  await r2.endTurnAnyway(); await p2;
+  assert.ok(d2.calls.includes('cancelBanter'), 'endTurnAnyway');
+  const d3 = rig(); d3.cancelBanter = () => d3.calls.push('cancelBanter');
+  const r3 = createTurnRunner(d3);
+  assert.equal(await r3.run('k'), 'done');
+  r3.cancel(); // the next combatant's turn start invalidates the finished turn
+  assert.ok(!d3.calls.includes('cancelBanter'), 'the finished turn reaction is not swallowed');
+});

@@ -4,7 +4,7 @@
 // recorded outcome. No Foundry or browser globals, no network.
 
 import { cellDistance, tokenDistance } from './grid.mjs';
-import { areEnemies, isDefeated } from './snapshot.mjs';
+import { areEnemies, isDefeated, normStatus } from './snapshot.mjs';
 import { describeOption, LINE_MAX_WORDS } from './prompt.mjs';
 
 /** Coarse condition label; never exposes exact numbers. */
@@ -19,6 +19,10 @@ export function hpBand(hp, structure) {
   if (frac < 0.75) return 'damaged';
   return 'fresh';
 }
+
+/** Excluded from banter: a Lancer Hidden status, or a GM-hidden token (gmHidden / legacy hidden flag). */
+export const isHiddenFromBanter = (t) => t.hidden === true || t.gmHidden === true
+  || (t.statuses ?? []).some((x) => normStatus(x) === 'HIDDEN');
 
 const bandOf = (t) => (isDefeated(t) ? 'destroyed' : hpBand(t.hp, t.structure));
 
@@ -37,7 +41,7 @@ function distanceBetween(grid, a, b) {
 export function buildBanterContext(snapshot, { speakerTokenId, phase, option, outcome, persona } = {}) {
   const me = snapshot.tokens.find((t) => t.id === speakerTokenId);
   if (!me) throw new Error(`Banter speaker ${speakerTokenId} is not in the snapshot.`);
-  const others = snapshot.tokens.filter((t) => t.id !== me.id && t.hidden !== true && !isDefeated(t));
+  const others = snapshot.tokens.filter((t) => t.id !== me.id && !isHiddenFromBanter(t) && !isDefeated(t));
   const entry = (t) => ({ name: t.name, band: bandOf(t), distance: distanceBetween(snapshot.grid, me, t) });
   return {
     speaker: { name: me.name, className: me.className ?? me.classIds?.[0] ?? null, side: me.side, band: bandOf(me) },
@@ -95,14 +99,58 @@ export function cleanBanterLine(text) {
   return s;
 }
 
-const NAMED_RESULT = /\b[\w-]+(?:'s| is| was| are| were)\s+(?:dead|down|destroyed|finished|done for|wrecked)\b/i;
+const NAMED_RESULT = /\b[\w-]+(?:'s|'re| is| was| are| were)\s+(?:dead|down|destroyed|wrecked|finished|done for|gone|toast)\b/i;
 const FIRST_PERSON_RESULT = /\bi\s+(?:just\s+|totally\s+)?(?:destroyed|wrecked|killed|hit|missed|took\s+(?:\w+\s+)?(?:down|out))\b/i;
 const OUTCOME_CLAIM = /\b(direct hit|scratch one|you('| a)re (dead|done for|finished)|i (hit|missed|killed)|(he|she|they|it)('s| is) (dead|down|destroyed))\b/i;
+const NUMBER_WORD = String.raw`(?:\d+|an?|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|several|some|much|more|full|double|triple|half|no)`;
+// "took six damage", "12 damage", "took a beating"
+const DAMAGE_CLAIM = new RegExp(String.raw`\b(?:${NUMBER_WORD}\s+(?:points?\s+of\s+)?damage|(?:took|taken|suffered|absorbed|eat|ate|lost)\b[^.!?]{0,24}\b(?:damage|hit|hits|beating)|(?:damaged|hurt|scorched|shredded|burned|bled))\b`, 'i');
+// Past-tense kills and misses stated about anyone ("You killed it", "that missed", "took him out").
+const KILL_CLAIM = /\b(?:killed|destroyed|wrecked|eliminated|downed|dead|scratch one|finished off|took\s+(?:\w+\s+)?(?:out|down)|blown up|(?:is|are|was|were|'s|'re|went|gone)\s+down)\b/i;
+const MISS_CLAIM = /\b(?:missed|whiffed)\b/i;
+// "hit/struck/shot" is a past-tense claim unless a modal, "to", or a determiner shows it is future, a noun or a wish.
+const STRIKE = new Set(['hit', 'struck', 'shot', 'clipped', 'tagged', 'nailed']);
+const NOT_PAST = new Set(['will', 'ill', 'ill', 'well', 'youll', 'theyll', 'hell', 'shell', 'to', 'gonna', 'gotta', 'can', 'cant', 'could', 'would', 'should',
+  'must', 'might', 'may', 'shall', 'let', 'lets', 'wont', 'not', 'never', 'dont', 'didnt', 'couldnt', 'wouldnt', 'cannot', 'no', 'first', 'next', 'good', 'nice', 'great', 'my', 'your', 'the', 'a', 'one', 'any']);
+const bare = (w) => w.toLowerCase().replace(/[’']/g, '').replace(/[^a-z0-9]/g, '');
 
-/** True when a line states a result as fact (illegal in an intent line). */
+function claimsStrike(text) {
+  const ws = text.split(/\s+/).map(bare).filter(Boolean);
+  for (let i = 0; i < ws.length - 1; i++) {
+    if (STRIKE.has(ws[i]) && !(i > 0 && NOT_PAST.has(ws[i - 1]))) return true;
+  }
+  return false;
+}
+
+/** Remove negated spans ("didn't hit you", "no damage", "never killed") before searching for claims. */
+const stripNegated = (t) => t.replace(/\b(?:\w+n't|cannot|not|never|no|without|nothing)\b(?:\s+\w+){0,2}/gi, ' ');
+const norm = (line) => String(line ?? '').replace(/’/g, "'");
+
+/** True when a line states a result as fact (illegal in an intent line). Rule-based; unusual phrasings can still slip through. */
 export function claimsOutcome(line) {
-  const t = String(line ?? '').replace(/’/g, "'");
-  return OUTCOME_CLAIM.test(t) || NAMED_RESULT.test(t) || FIRST_PERSON_RESULT.test(t);
+  const t = norm(line);
+  return OUTCOME_CLAIM.test(t) || NAMED_RESULT.test(t) || FIRST_PERSON_RESULT.test(t)
+    || DAMAGE_CLAIM.test(t) || KILL_CLAIM.test(t) || MISS_CLAIM.test(t) || claimsStrike(t);
+}
+
+/**
+ * True when a reaction line asserts something the recorded outcome contradicts: a hit, damage or
+ * kill after a miss; a kill when nothing was destroyed; damage when every hit target took none.
+ * Rule-based; unusual phrasings can still slip through.
+ */
+export function contradictsOutcome(line, outcome) {
+  if (!outcome || typeof outcome !== 'object') return false;
+  const t = stripNegated(norm(line));
+  const hitClaim = claimsStrike(t) || /\b(?:direct hit|hits?)\b/i.test(t);
+  const damageClaim = DAMAGE_CLAIM.test(t);
+  const killClaim = KILL_CLAIM.test(t);
+  const targets = Array.isArray(outcome.targets) ? outcome.targets : [];
+  if (outcome.status === 'missed') return hitClaim || damageClaim || killClaim;
+  if (outcome.status !== 'applied') return false;
+  if (killClaim && !targets.some((x) => x.destroyed)) return true;
+  const hits = targets.filter((x) => x.hit);
+  if (damageClaim && hits.length && hits.every((x) => x.damage === 0)) return true;
+  return false;
 }
 
 const words = (s) => new Set(String(s).toLowerCase().replace(/['‘’]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));

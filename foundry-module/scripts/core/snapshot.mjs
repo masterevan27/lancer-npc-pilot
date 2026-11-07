@@ -76,6 +76,7 @@ import { canSpend } from './budgets.mjs';
  * @property {Weapon[]} [weapons]
  * @property {Feature[]} [features]
  * @property {string} [persona]
+ * @property {boolean} [gmHidden]     true = the GM hid the token (document.hidden); banter never mentions it.
  * @property {boolean} [defeated]     true = wreck/dead: never a target, never an occupant (put wreck cells in `blocked` if they block).
  *
  * @typedef {boolean | {visible:boolean, cover?:'none'|'soft'|'hard'}} LosEntry

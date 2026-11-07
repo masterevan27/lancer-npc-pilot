@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
-  hpBand, buildBanterContext, buildBanterPrompt, cleanBanterLine, claimsOutcome, isRepeat, shouldReact,
+  hpBand, buildBanterContext, buildBanterPrompt, cleanBanterLine, claimsOutcome, contradictsOutcome, isRepeat, shouldReact,
 } from '../scripts/core/banter.mjs';
 import { LINE_MAX_WORDS } from '../scripts/core/prompt.mjs';
 
@@ -137,4 +137,56 @@ test('shouldReact', () => {
   assert.equal(shouldReact({ status: 'applied', targets: [t({ damage: 3 })] }), true);
   assert.equal(shouldReact({ status: 'applied', targets: [t({ damage: null })] }), false);
   assert.equal(shouldReact(null), false);
+});
+
+test('claimsOutcome catches damage, strike and kill statements in any person (final review 4)', () => {
+  for (const line of ['Cicada took six damage.', 'That shot hit Cicada.', 'The round struck Cicada square.', 'Cicada is down.',
+    'Cicada was destroyed.', 'You killed my wingman.', 'We took them out.', 'You missed me.', 'That is twelve damage, Cicada.', "Cicada, you're down."])
+    assert.equal(claimsOutcome(line), true, line);
+  for (const line of ['Hang on Cicada, I got him!', "I'll take the one on the left.", "I'll hit him hard.", "Let's hit them together.",
+    'About to hit that ridge, Cicada.', 'Stand still, Cicada.', 'Here comes the pain.'])
+    assert.equal(claimsOutcome(line), false, line);
+});
+
+test('contradictsOutcome drops reaction lines the recorded outcome refutes (final review 4)', () => {
+  const miss = { status: 'missed', targets: [{ hit: false }] };
+  const hit = (o) => ({ status: 'applied', targets: [{ hit: true, damage: 4, destroyed: false, ...o }] });
+  assert.equal(contradictsOutcome('I killed Cicada.', miss), true);
+  assert.equal(contradictsOutcome('Direct hit on Cicada!', miss), true);
+  assert.equal(contradictsOutcome('Cicada took six damage.', miss), true);
+  assert.equal(contradictsOutcome('Lucky, Cicada. Next time.', miss), false);
+  assert.equal(contradictsOutcome("Couldn't hit you, Cicada.", miss), false, 'negated claims are fine');
+  assert.equal(contradictsOutcome('Scratch one Cicada.', hit()), true, 'no kill recorded');
+  assert.equal(contradictsOutcome('Scratch one Cicada.', hit({ destroyed: true })), false);
+  assert.equal(contradictsOutcome('That hurt, Cicada, six damage!', hit({ damage: 0 })), true, 'zero damage recorded');
+  assert.equal(contradictsOutcome('Armor held, Cicada, no damage.', hit({ damage: 0 })), false);
+  assert.equal(contradictsOutcome('Feel that, Cicada.', hit()), false);
+  assert.equal(contradictsOutcome('anything', null), false);
+});
+
+test('banter context leaves out Lancer Hidden and GM-hidden tokens (final review 7)', () => {
+  const s = snap([tok({ id: 'a', name: 'Sentinel' }), tok({ id: 'h', name: 'Ghost', side: 'friendly', statuses: ['hidden'] }),
+    tok({ id: 'g', name: 'Gm', side: 'friendly', gmHidden: true }), tok({ id: 'v', name: 'Visible', side: 'friendly' })]);
+  const ctx = buildBanterContext(s, { speakerTokenId: 'a', phase: 'intent' });
+  assert.deepEqual([...ctx.allies, ...ctx.enemies].map((x) => x.name), ['Visible']);
+});
+
+import { extractSnapshot } from '../scripts/adapter/snapshot.mjs';
+import { environment } from './helpers/adapter-env.mjs';
+
+test('production snapshots mark GM-hidden and Hidden-status tokens so banter omits them (final review 7)', () => {
+  const env = environment();
+  const base = environment();
+  const extra = (id, x) => { const src = base.canvas.tokens.placeables[1]; return { ...src, id, name: id, document: { ...src.document, id, x, y: 100, toObject() { return { id, x, y: 100, elevation: 0 }; } }, actor: { ...src.actor, id: 'a-' + id, name: id, statuses: new Set() } }; };
+  const gm = extra('gm', 500), st = extra('st', 600);
+  gm.document.hidden = true; st.actor.statuses = new Set(['hidden']);
+  for (const t of [gm, st]) { const d = t.document; d.actor = t.actor;
+    d.getSize = () => ({ width: 100, height: 100 }); d.getCenterPoint = (p = {}) => ({ x: (p.x ?? d.x) + 50, y: (p.y ?? d.y) + 50 });
+    d.getOccupiedGridSpaceOffsets = (p = {}) => [{ i: 1, j: Math.floor((p.x ?? d.x) / 100) }]; d.getSnappedPosition = (p = {}) => ({ x: p.x ?? d.x, y: p.y ?? d.y }); }
+  env.canvas.tokens.placeables.push(gm, st);
+  const snapshot = extractSnapshot(env).snapshot;
+  assert.equal(snapshot.tokens.find((t) => t.id === 'gm').gmHidden, true);
+  assert.equal(snapshot.tokens.find((t) => t.id === 'pc').gmHidden, false);
+  const ctx = buildBanterContext(snapshot, { speakerTokenId: 'npc', phase: 'intent' });
+  assert.deepEqual([...ctx.allies, ...ctx.enemies].map((x) => x.name), ['pc']);
 });

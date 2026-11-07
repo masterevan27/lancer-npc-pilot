@@ -116,8 +116,46 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
       isNpc: actor?.type === 'npc', side: sideOf(token) });
   };
   let autoKey = null;
+  // GM-approved play with banter on: the intent line is spoken before approval and the reaction when Lancer resolves.
+  // Nothing here advances the turn. One session at a time; a turn change or cancel disposes it.
+  let approvedSession = null;
+  const endApprovedSession = ({ silence = false } = {}) => {
+    const session = approvedSession; approvedSession = null;
+    if (!session) return;
+    session.over = true;
+    try { session.observer?.dispose(); } catch { /* cleanup must not throw */ }
+    if (silence) banter.cancelPending();
+  };
+  const approveWithBanter = async (review, optionId) => {
+    endApprovedSession();
+    if (setting('banterEnabled') !== true) return controller.approve(review, optionId);
+    const session = approvedSession = { over: false, observer: null };
+    const option = review.options?.find(o => o.id === optionId);
+    // The model's line belongs to the option it chose; for any other pick the line is written fresh.
+    const sameOption = review.choice?.optionId === optionId;
+    const lineReview = { ...review, choice: { ...review.choice, line: sameOption ? review.choice?.line : '' } };
+    if (option) await banter.speakIntent(lineReview, option);
+    if (session.over) throw Error('The turn changed while the intent line was pending. Re-plan.');
+    if (option?.action?.kind === 'attack') {
+      try { session.observer = observeOutcome({ Hooks, canvas, expect: buildOutcomeExpectation(option, review, { getToken }) }); }
+      catch (e) { logWarn(`NPC Pilot: reaction banter unavailable: ${e?.message ?? e}`); }
+    }
+    let result;
+    try { result = await controller.approve(review, optionId); }
+    catch (e) { if (approvedSession === session) endApprovedSession(); throw e; }
+    const observer = session.observer;
+    if (!observer) return result;
+    if (result?.status === 'attack-cancelled') { endApprovedSession(); return result; }
+    const speakerTokenId = review.snapshot?.activeTokenId;
+    void observer.done.then(outcome => {
+      if (session.over) return;
+      if (outcome?.status === 'missed' || outcome?.status === 'applied') return banter.speakReaction(outcome, speakerTokenId);
+    }).catch(e => logWarn(`NPC Pilot: reaction banter failed: ${e?.message ?? e}`))
+      .finally(() => { if (approvedSession === session) endApprovedSession(); });
+    return result;
+  };
   // Any cancellation invalidates queued auto runs and clears the in-flight flag.
-  const invalidate = () => { turnSeq++; autoRunning = false; autoKey = null; runner?.cancel(); };
+  const invalidate = () => { turnSeq++; autoRunning = false; autoKey = null; runner?.cancel(); endApprovedSession({ silence: true }); };
   // The auto runner may only execute while the full gate is still open for the same turn.
   const autoController = { plan: o => controller.plan(o), cancel: () => controller.cancel(),
     approve: (review, optionId) => {
@@ -133,7 +171,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     observe: (option, board) => observeOutcome({ Hooks, canvas, expect: buildOutcomeExpectation(option, board, { getToken }) }),
     endTurn: () => game.combat.nextTurn(), whisperGM,
     openReview: review => api.openReview(review),
-    speakIntent: banter.speakIntent, speakReaction: banter.speakReaction, readTurnInfo, log: logWarn });
+    speakIntent: banter.speakIntent, speakReaction: banter.speakReaction, cancelBanter: () => banter.cancelPending(), readTurnInfo, log: logWarn });
   const api = {
     grapples,shield,
     async setAutoOptOut(actor, value) {
@@ -147,7 +185,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
       try {
         const result = await showReview(review, { DialogV2, canExecute: canExecute() && review.terrainReviewed });
         if (result?.action === 'execute') {
-          await controller.approve(review, result.optionId);
+          await approveWithBanter(review, result.optionId);
           notifications.info('NPC Pilot handed off the approved option. Resolve remaining actions, reactions and damage in Lancer.');
         } else if (result?.action === 'reask') next = () => api.planTurn();
         else if (result?.action === 'configure') next = async () => { if (review.mode === 'policy') await api.configurePolicy(); else if (await api.configureRelay()) await api.planTurn(); };
@@ -233,7 +271,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
           }
           if (result?.action === 'terrain') { if (await api.reviewTerrain()) continue; break; }
           if (result?.action === 'execute') {
-            await controller.approve(review, result.optionId);
+            await approveWithBanter(review, result.optionId);
             notifications.info('NPC Pilot handed off the approved option. Resolve remaining actions, reactions and damage in Lancer.');
           }
           break;
