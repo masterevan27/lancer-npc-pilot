@@ -14,7 +14,7 @@ the displayed budget. Ordinary movement, native Ram Cannon handoff and safety
 refusals have scoped live evidence; complete Cataphract mechanics remain open.
 [Acceptance evidence and limitations](docs/review-evidence/2026-11-03-policy-acceptance.md).
 
-Status: development 0.9.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
+Status: development 0.10.0 source; see the [latest published release](https://github.com/masterevan27/lancer-npc-pilot/releases/latest).
 The relay, pure core and GM review module are
 implemented; 0.2.0 passed initial local-model and approved Boost checks on a staged
 square scene. Full live acceptance is still pending. Execution and automatic turn
@@ -34,6 +34,7 @@ These guides do not enable special abilities. [Coverage evidence](docs/review-ev
 
 The [roadmap](docs/roadmap.md) records remaining mechanics work and the planned
 move toward book-derived class policies, beginning with a T1 base Cataphract.
+Development 0.10.0 adds off-by-default auto mode and NPC banter (source only, live acceptance open; auto-roll is deferred). See the [adapter guide](docs/foundry-adapter.md#auto-mode-and-banter-development-0100).
 Development 0.8.0 adds explicit client **Decision mode → Module policy (no relay)**.
 The first maintained binding is a T1 base Cataphract. Development 0.9.0 adds
 source-checked Trample routes/damage, native-save Impale continuation, standalone

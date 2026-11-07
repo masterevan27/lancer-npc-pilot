@@ -50,8 +50,8 @@ sources:
   - id: design
     resource: design.md
 generated:
-  by: codex/unrecorded
-  at: 2026-11-04T02:11:23.362Z
+  by: claude/claude-opus-5-5
+  at: 2026-11-07T12:00:00.000Z
 stale_after: 2027-01-30T00:00:00Z
 ---
 # Foundry adapter setup and acceptance
@@ -521,3 +521,63 @@ contests, paired movement and Shield damage require the active GM and enabled
 execution plus explicit review. Mandatory expiry of already-established owned
 effects remains cleanup when execution is disabled. Neither policy planning nor
 these handlers calls a model relay or reads a provider key.
+
+## Auto mode and banter (development 0.10.0)
+
+<!-- doc-media TODO: purpose: show the shared turn banner (thinking sweep, acting summary, speech line) so a reader knows what players see. Capture acceptance: a real Foundry banner on a disposable world, sanitized, with source, date, revision and method recorded. Blocker: no live run yet. -->
+
+Everything in this section is **unverified in live Foundry**. The source has pure
+and adapter tests only; no disposable-world pass has been run.
+
+Settings X:
+
+- **Auto mode** (`autoMode`): hostile and friendly NPC turns plan and execute
+  when they start, without the review dialog. It needs token execution enabled
+  and the responsible GM client. The GM can opt one NPC out with
+  `api.setAutoOptOut(actor, true)` (actor flag `autoOptOut`). Existing legality,
+  stale-board and replay guards still apply; any refusal or changed board falls
+  back to GM review or a held turn.
+- **NPC banter** (`banterEnabled`): see below.
+- **Banter provider** (`banterProvider`, client): local / OpenAI compatible
+  (default) or the paid Anthropic API, which needs explicit selection.
+- **Banter model override** (`banterModel`, client): blank uses the relay's model.
+
+What is automated: planning and executing the NPC's move and attack through the
+existing native flows, the shared banner, reading the recorded outcome, and
+ending that NPC's own turn. What is not: rolls, damage and apply. Humans click
+Lancer's roll, damage and apply windows. Auto-roll is a blocked follow-up and is
+not in this release: Lancer 3.1.3's damage HUD is not exposed to modules, so
+pressing it would make Pilot compute damage inputs itself, which breaks the
+anti-goals. A possible later approach is pressing the HUD's own submit control,
+which needs an owner-authorized disposable-world pass.
+
+Model fallback: in model mode, a relay failure or 30 seconds of silence plays the
+top-scoring safe option with the reason "Model unavailable". It never guesses.
+
+Warm-up: when the module loads, a tiny fixed prompt (no board data) is sent to
+each configured **local** (OpenAI compatible) model so it is loaded before the
+first turn. Paid providers are never warmed. One notification reports success
+("model warmed up") or a warning that the first AI turn may be slow.
+
+Turn end: after the outcome is observed (applied damage or a resolved miss),
+auto mode ends only its own NPC's turn with `game.combat.nextTurn()`. It never
+activates the next combatant for anything else. The banner's **End turn anyway**
+button lets the GM end that turn manually.
+
+Banner: every connected client sees an angled banner, broadcast over the module
+socket, with the token or pilot portrait, red or green side colours, a continuous
+sweep (about 1.8 s) while the NPC is thinking, and a brief acting summary that
+fades after about 3 s.
+
+Banter: with the toggle on, an NPC speaks up to two lines per turn: an intent line
+before the roll, which never claims a result, and a reaction line written only
+from the outcome Lancer recorded (none when ambiguous). Repeats are suppressed.
+Lines show as a speech banner and as in-character chat. Failure drops the line;
+generation never blocks or changes the turn.
+
+Known limitation: a cancelled Lancer attack HUD is not visible to Pilot (the
+executor ignores the flow's `begin()` result), so the turn simply waits for the
+GM's **End turn anyway**.
+
+Acceptance still open: a disposable-world pass with one hostile and one friendly
+NPC, covering banner visibility on a second client, fallback, warm-up and banter.

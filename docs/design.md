@@ -247,3 +247,11 @@ instead of executing a stale option.
 File layout inside each folder, scoring weights, prompt wording, the UI
 look, and which Lancer actions beyond attack/move/Boost make v1, provided the
 anti-goals hold.
+
+## Auto mode and banter
+
+Development 0.10.0 adds off-by-default auto mode and NPC banter. They keep the
+anti-goals: the AI still never rolls or invents outcomes, execution still needs
+the existing gates, and the key stays relay-side. See the
+[adapter guide](foundry-adapter.md#auto-mode-and-banter-development-0100) and the
+[design](superpowers/specs/2026-11-07-auto-mode-and-banter-design.md).

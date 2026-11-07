@@ -31,9 +31,6 @@ export function registerSettings(game) {
   game.settings.register(MODULE_ID,'autoMode',{name:'Auto mode: run NPC turns without approval',
     hint:'Hostile and friendly NPC turns play themselves when they start. Requires token execution to be enabled; the GM can opt an NPC out with api.setAutoOptOut(actor, true).',
     scope:'world',config:true,type:Boolean,default:false});
-  game.settings.register(MODULE_ID,'autoRoll',{name:"Auto-roll: press Lancer's roll and apply buttons for AI attacks",
-    hint:'Separate from auto mode. Pilot only presses the native buttons; it never rolls or edits outcomes itself.',
-    scope:'world',config:true,type:Boolean,default:false});
   game.settings.register(MODULE_ID,'banterEnabled',{name:'NPC banter',
     hint:'NPCs speak a short in-character line before and after their attack.',scope:'world',config:true,type:Boolean,default:false});
   game.settings.register(MODULE_ID,'banterProvider',{name:'Banter provider',scope:'client',config:true,type:String,

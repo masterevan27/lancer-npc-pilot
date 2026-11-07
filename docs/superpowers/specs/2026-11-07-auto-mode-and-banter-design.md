@@ -19,9 +19,14 @@ sources:
     resource: ../../../relay/server.mjs
 generated:
   by: claude/claude-opus-5-5
-  at: 2026-11-07T06:30:00.000Z
+  at: 2026-11-07T12:00:00.000Z
 ---
 # Auto mode and NPC banter
+
+Implementation status (development 0.10.0): source implemented on branch
+`claude/auto-mode-banter`; live acceptance is open. Auto-roll described below is
+deferred and was removed from 0.10.0 because Lancer 3.1.3's damage HUD is not
+exposed to modules; humans click Lancer's roll, damage and apply windows.
 
 Roadmap line: `playable-2v2` (cards `play-auto-mode` and `play-banter`). Agreed with
 the owner in chat on 2026-11-07, using browser mockups. Decisions the owner made are

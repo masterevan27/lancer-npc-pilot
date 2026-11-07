@@ -33,7 +33,7 @@ sources:
     resource: superpowers/specs/2026-11-07-auto-mode-and-banter-design.md
 generated:
   by: claude/claude-opus-5-5
-  at: 2026-11-07T06:30:00.000Z
+  at: 2026-11-07T12:00:00.000Z
 ---
 # NPC mechanics and tactical behavior roadmap
 
@@ -92,13 +92,13 @@ covers the first two cards. Dashboard line ID: `playable-2v2`.
 
 ### play-auto-mode: Hands-off NPC turns with a shared turn banner
 
-Status: design agreed with the owner on November 7; not implemented.
+Status: active; 0.10.0 source implemented on branch claude/auto-mode-banter, live acceptance open.
+Auto-roll is blocked and removed from 0.10.0: Lancer 3.1.3's damage HUD is not exposed to modules, so humans click Lancer's roll, damage and apply windows. A possible later approach is pressing the HUD's own submit control, which needs an owner-authorized disposable-world pass.
 
 Acceptance: an off-by-default GM setting plans and executes NPC turns without the
 review dialog, using the existing legality, stale-board and replay guards. Any
 refusal, missing input or changed board falls back to GM review or a held turn,
-never a guess. Rolls stay in Lancer's native windows, clicked by a human unless the
-separate off-by-default auto-roll option presses Lancer's own buttons. Auto mode
+never a guess. Rolls stay in Lancer's native windows, clicked by a human (auto-roll is deferred). Auto mode
 ends only its own NPC's turn, after observed applied damage or a resolved miss,
 with an "End turn anyway" control; it never activates the next combatant. In model
 mode, a relay failure or a 30-second silence plays the top-scoring safe option, and
@@ -110,7 +110,7 @@ disposable-world pass with one hostile and one friendly NPC.
 
 ### play-banter: Situational in-character lines before and after resolution
 
-Status: design agreed with the owner on November 7; not implemented.
+Status: active; 0.10.0 source implemented on branch claude/auto-mode-banter, live acceptance open.
 Depends on reading native attack outcomes (new, read-only).
 
 Acceptance: an off-by-default toggle produces up to two lines per NPC turn — an

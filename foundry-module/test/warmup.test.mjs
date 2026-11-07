@@ -64,9 +64,10 @@ test('one failure among several warms warns once', async () => {
 test('new world toggles default off and banter provider defaults to local', () => {
   const settings = new Map();
   registerSettings({ settings: { register: (_m, k, v) => settings.set(k, v) }, keybindings: { register() {} } });
-  for (const k of ['autoMode', 'autoRoll', 'banterEnabled']) {
+  for (const k of ['autoMode', 'banterEnabled']) {
     assert.equal(settings.get(k).default, false, k); assert.equal(settings.get(k).scope, 'world'); assert.equal(settings.get(k).config, true);
   }
+  assert.equal(settings.has('autoRoll'), false, 'auto-roll is deferred; no setting is registered');
   const p = settings.get('banterProvider');
   assert.equal(p.default, 'openai'); assert.equal(p.scope, 'client');
   assert.deepEqual(Object.keys(p.choices), ['openai', 'anthropic']);
