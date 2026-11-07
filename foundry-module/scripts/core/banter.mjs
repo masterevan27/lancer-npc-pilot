@@ -95,14 +95,17 @@ export function cleanBanterLine(text) {
   return s;
 }
 
+const NAMED_RESULT = /\b[\w-]+(?:'s| is| was| are| were)\s+(?:dead|down|destroyed|finished|done for|wrecked)\b/i;
+const FIRST_PERSON_RESULT = /\bi\s+(?:just\s+|totally\s+)?(?:destroyed|wrecked|killed|hit|missed|took\s+(?:\w+\s+)?(?:down|out))\b/i;
 const OUTCOME_CLAIM = /\b(direct hit|scratch one|you('| a)re (dead|done for|finished)|i (hit|missed|killed)|(he|she|they|it)('s| is) (dead|down|destroyed))\b/i;
 
 /** True when a line states a result as fact (illegal in an intent line). */
 export function claimsOutcome(line) {
-  return OUTCOME_CLAIM.test(String(line ?? '').replace(/’/g, "'"));
+  const t = String(line ?? '').replace(/’/g, "'");
+  return OUTCOME_CLAIM.test(t) || NAMED_RESULT.test(t) || FIRST_PERSON_RESULT.test(t);
 }
 
-const words = (s) => new Set(String(s).toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
+const words = (s) => new Set(String(s).toLowerCase().replace(/['‘’]/g, '').replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(Boolean));
 
 /** Exact or near-duplicate (word-set Jaccard >= 0.6) of any recent line. */
 export function isRepeat(line, recent = []) {

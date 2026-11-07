@@ -106,6 +106,12 @@ test('claimsOutcome', () => {
   assert.equal(claimsOutcome("You're done for."), true);
   assert.equal(claimsOutcome('I killed it.'), true);
   assert.equal(claimsOutcome("He's down."), true);
+  assert.equal(claimsOutcome('I destroyed Cicada.'), true);
+  assert.equal(claimsOutcome('Cicada is dead.'), true);
+  assert.equal(claimsOutcome("Cicada's down!"), true);
+  assert.equal(claimsOutcome('I took him out.'), true);
+  assert.equal(claimsOutcome('I wrecked it'), true);
+  assert.equal(claimsOutcome('Hang on Cicada, I got him!'), false);
   assert.equal(claimsOutcome('Let me see you dodge this.'), false);
 });
 
@@ -113,6 +119,8 @@ test('isRepeat', () => {
   assert.equal(isRepeat('Look out, Cicada!', ['look out cicada']), true);
   assert.equal(isRepeat('Hold the line', ['Look out, Cicada!']), false);
   assert.equal(isRepeat('hold the line now', ['hold the line']), true);
+  assert.equal(isRepeat('dont move', ["don't move"]), true);
+  assert.equal(isRepeat('Don’t move', ["dont move"]), true);
   assert.equal(isRepeat('anything', []), false);
   assert.equal(isRepeat('a b c d e f', ['a b c x y z']), false);
 });
