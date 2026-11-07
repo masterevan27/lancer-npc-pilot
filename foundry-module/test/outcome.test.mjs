@@ -113,3 +113,25 @@ test('observer ignores unrelated actor updates and matches unlinked token actors
   assert.equal(obs.tracker.outcome.status, 'pending');
   obs.dispose();
 });
+
+test('two hit targets sharing one actor are each credited once per damage update', async () => {
+  const Hooks = fakeHooks(), actor = actorOf(10, 2);
+  const canvas = { scene: { tokens: [{ uuid: CIC, actor }, { uuid: OTH, actor }] } };
+  const obs = observeOutcome({ Hooks, canvas, expect: { actorId: 'npc1', itemUuid: 'Item.ram',
+    targetTokenUuids: [CIC, OTH], targets: [{ tokenUuid: CIC, name: 'A', maxHp: 10 }, { tokenUuid: OTH, name: 'B', maxHp: 10 }] } });
+  Hooks.fire('createChatMessage', msg({ attackData: { origin: 'npc1', attackerItemUuid: 'Item.ram',
+    targets: [{ uuid: CIC, hit: true, crit: false }, { uuid: OTH, hit: true, crit: false }] } }));
+  const hit = (hp) => {
+    Hooks.fire('preUpdateActor', actor, { system: { hp: { value: hp } } });
+    actor.system.hp.value = hp;
+    Hooks.fire('updateActor', actor, { system: { hp: { value: hp } } });
+  };
+  hit(6);
+  assert.equal(obs.tracker.outcome.status, 'pending');
+  assert.deepEqual(obs.tracker.outcome.targets.map((t) => t.damage), [4, null]);
+  hit(3);
+  const o = await obs.done;
+  assert.equal(o.status, 'applied');
+  assert.deepEqual(o.targets.map((t) => t.damage), [4, 3]);
+  obs.dispose();
+});

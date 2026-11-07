@@ -24,12 +24,23 @@ export function observeOutcome({ Hooks, canvas, expect }) {
   };
   // Linked tokens share the world actor; unlinked tokens own a synthetic actor,
   // so compare the token's own actor reference first, then actor.token.uuid.
-  const tokenUuidFor = (actor) => {
+  const order = [...wanted];
+  const tokenUuidsFor = (actor) => {
+    const out = [];
     for (const tok of canvas?.scene?.tokens ?? []) {
-      if (wanted.has(tok.uuid) && (tok.actor === actor)) return tok.uuid;
+      if (wanted.has(tok.uuid) && tok.actor === actor && !out.includes(tok.uuid)) out.push(tok.uuid);
     }
     const u = actor?.token?.uuid;
-    return u && wanted.has(u) ? u : null;
+    if (u && wanted.has(u) && !out.includes(u)) out.push(u);
+    return out.sort((x, y) => order.indexOf(x) - order.indexOf(y));
+  };
+  // Several expected targets can share one linked world actor. One update credits
+  // the next hit target not yet credited (never several), in expect order.
+  const creditTarget = (actor) => {
+    const uuids = tokenUuidsFor(actor);
+    if (!uuids.length) return null;
+    const ts = tracker.outcome.targets;
+    return uuids.find((u) => ts.some((t) => t.tokenUuid === u && t.hit && t.damage === null)) ?? uuids[0];
   };
   const on = (name, fn) => { registered.push([name, Hooks.on(name, fn)]); };
 
@@ -38,14 +49,14 @@ export function observeOutcome({ Hooks, canvas, expect }) {
     if (flags) { tracker.onAttackCard(flags); check(); }
   });
   on('preUpdateActor', (actor, changes) => {
-    if (!touches(changes) || !tokenUuidFor(actor)) return;
+    if (!touches(changes) || !tokenUuidsFor(actor).length) return;
     before.set(actor, snap(actor));
   });
   on('updateActor', (actor, changes) => {
     const prev = before.get(actor);
     if (!prev) return;
     before.delete(actor);
-    const tokenUuid = tokenUuidFor(actor);
+    const tokenUuid = creditTarget(actor);
     if (!tokenUuid) return;
     const after = snap(actor);
     const destroyed = after.structure <= 0 && prev.structure > 0;
