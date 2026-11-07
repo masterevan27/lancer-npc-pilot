@@ -27,7 +27,7 @@ test('missing weapon, target or attacker throws so the runner holds', () => {
 });
 
 import { initializePilot } from '../scripts/pilot.mjs';
-import { environment } from './adapter.test.mjs';
+import { environment } from './helpers/adapter-env.mjs';
 
 test('initializePilot registers combat hooks, setAutoOptOut, and warns once when auto mode lacks execution', async () => {
   const env = environment();
@@ -42,4 +42,80 @@ test('initializePilot registers combat hooks, setAutoOptOut, and warns once when
   assert.equal(warns.length, 1); assert.match(warns[0], /auto mode needs token execution/);
   let flag; await api.setAutoOptOut({ setFlag: async (m, k, v) => { flag = [m, k, v]; } }, true);
   assert.deepEqual(flag, ['lancer-npc-pilot', 'autoOptOut', true]);
+});
+
+// ---- initializePilot harness for the auto-run gate ----
+function harness(over = {}) {
+  const env = environment();
+  const h = { handlers: {}, chats: [], infos: [], errors: [], fetches: [], nextTurns: 0, locks: [] };
+  const values = { decisionMode: 'model', autoMode: true, executionEnabled: true, promptOnTurn: false,
+    relayUrl: 'http://127.0.0.1:5090', secret: 's', provider: 'openai', model: '', banterEnabled: false, ...over };
+  h.values = values;
+  env.game.users = { activeGM: env.game.user };
+  env.game.settings = { get: (_m, k) => values[k] ?? false };
+  env.game.combat.combatant = { id: 'cb', tokenId: 'npc' };
+  env.game.combat.nextTurn = async () => { h.nextTurns++; };
+  env.canvas.scene.flags.terrain = { reviewed: true };
+  for (const t of env.canvas.tokens.placeables) {
+    t.document.uuid = `Scene.scene.Token.${t.id}`;
+    t.actor.items.get = id => t.actor.items.find(i => i.id === id);
+  }
+  env.canvas.tokens.placeables[0].actor.items[0].uuid = 'Actor.a-npc.Item.rifle';
+  env.canvas.scene.tokens = [];
+  h.env = env;
+  h.fetchOrig = globalThis.fetch;
+  globalThis.fetch = (url) => new Promise((_res, rej) => h.fetches.push(rej));
+  globalThis.ChatMessage = undefined;
+  h.ChatMessage = { create: async m => { h.chats.push(m); }, getWhisperRecipients: () => ['gm'], getSpeaker: () => ({}) };
+  h.api = initializePilot({ ...env, Hooks: { on: (n, f) => { h.handlers[n] = f; } }, ChatMessage: h.ChatMessage,
+    locks: { request: async (k, _o, fn) => { h.locks.push(k); return fn({}); } },
+    DialogV2: { wait: async () => ({ action: 'skip' }), prompt: async () => null },
+    notifications: { info: m => h.infos.push(m), warn() {}, error: m => h.errors.push(m) } });
+  h.turn = n => { env.game.combat.turn = n; h.handlers.updateCombat(env.game.combat, { turn: n }); };
+  h.done = () => { globalThis.fetch = h.fetchOrig; };
+  return h;
+}
+const tick = () => new Promise(r => setTimeout(r, 20));
+
+test('turning auto mode off while planning is pending holds the turn instead of executing', async () => {
+  const h = harness();
+  try {
+    await tick(); // ready-time warm-up request, if any, settles
+    h.fetches.length = 0;
+    h.turn(1); await tick();
+    assert.equal(h.fetches.length, 1, 'auto planning requested the model');
+    h.values.autoMode = false;
+    h.fetches[0](new Error('down')); await tick();
+    assert.equal(h.nextTurns, 0);
+    assert(!h.locks.some(k => k.startsWith('lancer-npc-pilot:')), 'execution was never entered');
+    assert(h.chats.some(c => c.whisper), 'GM was whispered about the held turn');
+    assert(!h.chats.some(c => c.flavor), 'no intent line was posted by an execution');
+  } finally { h.done(); }
+});
+
+test('a stale auto run flag does not block manual planning after the next turn starts no auto run', async () => {
+  const h = harness();
+  try {
+    await tick(); h.fetches.length = 0;
+    h.turn(1); await tick();
+    h.values.autoMode = false; // next turn's actor is not auto-run
+    h.turn(2); await tick();
+    h.fetches.length = 0;
+    const p = h.api.planTurn(); await tick();
+    assert(!h.infos.includes('NPC Pilot is already planning or reviewing a turn.'));
+    assert.equal(h.fetches.length, 1, 'manual planning proceeded');
+    h.fetches[0](new Error('down')); await p.catch(() => {});
+  } finally { h.done(); }
+});
+
+test('cancelling before history settles prevents a queued auto run from starting', async () => {
+  const h = harness();
+  try {
+    await tick(); h.fetches.length = 0;
+    h.turn(1); h.handlers.deleteCombat({});
+    await tick();
+    assert.equal(h.fetches.length, 0);
+    h.turn(2); h.api.cancel(); await tick();
+    assert.equal(h.fetches.length, 0);
+  } finally { h.done(); }
 });

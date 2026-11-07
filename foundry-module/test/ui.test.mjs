@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { renderReview, showReview } from '../scripts/adapter/review.mjs';
 import { initializePilot,registerSettings } from '../scripts/pilot.mjs';
-import { environment } from './adapter.test.mjs';
+import { environment } from './helpers/adapter-env.mjs';
 
 const review = { snapshot: { activeTokenId: 'npc', tokens: [{ id: 'npc', name: '<img src=x onerror=alert(1)>' }] },
   options: [{ id: 'A', score: 1, action: { kind: 'hold' }, move: null, facts: {} }],

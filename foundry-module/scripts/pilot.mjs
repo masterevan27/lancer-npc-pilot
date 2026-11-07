@@ -112,7 +112,23 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
       terrainReviewed: canvas.scene?.getFlag(MODULE_ID, 'terrain')?.reviewed === true };
   };
   const whisperGM = text => ChatMessage.create({ content: `<p>${escapeHtml(text)}</p>`, whisper: ChatMessage.getWhisperRecipients('GM') });
-  runner = createTurnRunner({ controller, banner,
+  const autoGate = combat => {
+    const token = canvas.tokens?.get(combat?.combatant?.tokenId), actor = token?.actor;
+    return shouldAutoRun({ autoMode: setting('autoMode') === true, executionEnabled: setting('executionEnabled') === true,
+      isResponsibleGM: isResponsibleGM(game), actorOptOut: actor?.getFlag?.(MODULE_ID, 'autoOptOut') === true,
+      isNpc: actor?.type === 'npc', side: sideOf(token) });
+  };
+  let autoKey = null;
+  // Any cancellation invalidates queued auto runs and clears the in-flight flag.
+  const invalidate = () => { turnSeq++; autoRunning = false; autoKey = null; runner?.cancel(); };
+  // The auto runner may only execute while the full gate is still open for the same turn.
+  const autoController = { plan: o => controller.plan(o), cancel: () => controller.cancel(),
+    approve: (review, optionId) => {
+      if (!autoGate(game.combat).auto || !autoKey || turnKeyFor(game.combat) !== autoKey)
+        throw Error('Auto mode was turned off or the turn changed. Continue manually.');
+      return controller.approve(review, optionId);
+    } };
+  runner = createTurnRunner({ controller: autoController, banner,
     observe: (option, board) => observeOutcome({ Hooks, canvas, expect: buildOutcomeExpectation(option, board, { getToken }) }),
     endTurn: () => game.combat.nextTurn(), whisperGM,
     openReview: review => api.openReview(review),
@@ -223,22 +239,18 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
         }
       } finally { controller.cancel(); busy = false; }
     },
-    cancel: () => { runner.cancel(); controller.cancel(); },
+    cancel: () => { invalidate(); controller.cancel(); },
   };
   Hooks.on('updateCombat', (combat, changes) => {
     if (!('turn' in changes || 'round' in changes)) return;
-    const seq = ++turnSeq;
-    runner.cancel();
+    invalidate();
+    const seq = turnSeq;
     controller.cancel();
-    const token = canvas.tokens?.get(combat.combatant?.tokenId);
-    const actor = token?.actor;
-    const gate = shouldAutoRun({ autoMode: setting('autoMode') === true, executionEnabled: setting('executionEnabled') === true,
-      isResponsibleGM: isResponsibleGM(game), actorOptOut: actor?.getFlag?.(MODULE_ID, 'autoOptOut') === true,
-      isNpc: actor?.type === 'npc', side: sideOf(token) });
-    if (gate.auto && !busy) {
+    const actor = canvas.tokens?.get(combat.combatant?.tokenId)?.actor;
+    if (autoGate(combat).auto && !busy) {
       const key = turnKeyFor(combat);
-      autoRunning = true;
-      void history.settled().then(() => { if (seq === turnSeq) return runner.run(key); })
+      autoKey = key; autoRunning = true;
+      void history.settled().then(() => { if (seq === turnSeq && turnKeyFor(game.combat) === key) return runner.run(key); })
         .catch(e => notifications.error(e.message)).finally(() => { if (seq === turnSeq) autoRunning = false; });
       return;
     }
@@ -246,8 +258,8 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     if ((setting('promptOnTurn') || setting('autoMode')) && isResponsibleGM(game) && actor?.type === 'npc' && !busy)
       void history.settled().then(() => { if (seq === turnSeq) return api.planTurn(); }).catch(e => notifications.error(e.message));
   });
-  Hooks.on('deleteCombat', () => runner.cancel());
-  Hooks.on('canvasTearDown', () => { runner.cancel(); controller.cancel(); });
+  Hooks.on('deleteCombat', () => invalidate());
+  Hooks.on('canvasTearDown', () => { invalidate(); controller.cancel(); });
   void (async () => {
     try {
       if (!isResponsibleGM(game)) return;
