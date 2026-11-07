@@ -126,3 +126,58 @@ test('a new show replaces the old banner; clear emits', () => {
   assert.equal(s.emitted.at(-1)[1].type, 'banner-clear');
   s.ch.dispose();
 });
+
+function timed() {
+  const pending = new Map(); let id = 0; const cleared = [];
+  const setTimeout = (fn, ms) => { pending.set(++id, {fn, ms}); return id; };
+  const clearTimeout = h => { cleared.push(h); pending.delete(h); };
+  const fire = () => { const [h, t] = [...pending][0]; pending.delete(h); t.fn(); return t.ms; };
+  const emitted = []; const offs = [];
+  const game = {user:{isGM:true}, socket:{emit:(n, d) => emitted.push(d), on:() => {}, off:(n, f) => offs.push(n)}};
+  const document = fakeDoc();
+  const ch = createBannerChannel({game, document, setTimeout, clearTimeout});
+  return {pending, cleared, fire, ch, document, offs};
+}
+const live = d => all(d.body).filter(e => e.className.startsWith('npc-pilot-banner '));
+
+test('acting banner fades at 3000 ms, then is removed after the fade', () => {
+  const t = timed();
+  t.ch.show(view({kind:'acting', autoHideMs:3000, showEndTurn:false}));
+  assert.equal(t.fire(), 3000);
+  assert.ok(live(t.document)[0].className.includes('npc-pilot-banner--fading'));
+  assert.equal(live(t.document).length, 1);
+  t.fire();
+  assert.equal(live(t.document).length, 0);
+});
+test('speech banner also fades before removal', () => {
+  const t = timed();
+  t.ch.show(view({kind:'speech', quote:'hi', autoHideMs:5000, showEndTurn:false}));
+  assert.equal(t.fire(), 5000);
+  assert.ok(live(t.document)[0].className.includes('--fading'));
+  t.fire();
+  assert.equal(live(t.document).length, 0);
+});
+test('a new show cancels old timers, so the new banner is never hidden by them', () => {
+  const t = timed();
+  t.ch.show(view({kind:'acting', autoHideMs:3000, showEndTurn:false}));
+  t.fire(); // old banner now fading, removal timer pending
+  t.ch.show(view({kind:'thinking'}));
+  assert.equal(t.pending.size, 0);
+  assert.ok(t.cleared.length >= 1);
+  assert.equal(live(t.document).length, 1);
+  assert.ok(!live(t.document)[0].className.includes('--fading'));
+});
+test('clear cancels pending timers', () => {
+  const t = timed();
+  t.ch.show(view({kind:'acting', autoHideMs:3000, showEndTurn:false}));
+  t.ch.clear();
+  assert.equal(t.pending.size, 0);
+  assert.equal(live(t.document).length, 0);
+});
+test('dispose removes the socket listener', () => {
+  const t = timed();
+  t.ch.show(view());
+  t.ch.dispose();
+  assert.deepEqual(t.offs, ['module.lancer-npc-pilot']);
+  assert.equal(live(t.document).length, 0);
+});

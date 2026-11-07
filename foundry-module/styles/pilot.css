@@ -23,3 +23,5 @@
 .npc-pilot-banner--thinking .npc-pilot-banner__body::after { content: ""; position: absolute; top: 0; bottom: 0; left: 0; width: 35%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.4), transparent); transform: translateX(-100%); animation: npc-pilot-sweep 1.8s linear infinite; pointer-events: none; }
 @keyframes npc-pilot-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
 .npc-pilot-banner--speech .npc-pilot-banner__body { background: #15171c; border-top: 3px solid var(--npc-pilot-base); border-bottom: 3px solid var(--npc-pilot-base); }
+.npc-pilot-banner { transition: opacity .6s ease; }
+.npc-pilot-banner--fading { opacity: 0; }

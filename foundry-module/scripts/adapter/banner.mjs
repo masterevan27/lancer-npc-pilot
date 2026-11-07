@@ -1,9 +1,11 @@
 // Renders the NPC turn banner on every client and broadcasts over the module socket.
-export function createBannerChannel({game, socketName = 'module.lancer-npc-pilot', document, onEndTurn}) {
-  let root = null;
-  let timer = null;
+export const FADE_MS = 600; // keep in step with the .npc-pilot-banner--fading transition in pilot.css
 
-  const stopTimer = () => { if (timer != null) { clearTimeout(timer); timer = null; } };
+export function createBannerChannel({game, socketName = 'module.lancer-npc-pilot', document, onEndTurn, setTimeout: setT = globalThis.setTimeout, clearTimeout: clearT = globalThis.clearTimeout}) {
+  let root = null;
+  let timers = [];
+
+  const stopTimer = () => { timers.forEach(t => clearT(t)); timers = []; };
   const remove = () => { stopTimer(); if (root) { root.remove(); root = null; } };
 
   function el(tag, className, text) {
@@ -40,8 +42,16 @@ export function createBannerChannel({game, socketName = 'module.lancer-npc-pilot
     document.body.append(root);
     if (view.autoHideMs != null) {
       const mine = root;
-      timer = setTimeout(() => { if (root === mine) remove(); }, view.autoHideMs);
-      timer?.unref?.();
+      const track = (fn, ms) => {
+        const h = setT(fn, ms);
+        h?.unref?.();
+        timers.push(h);
+      };
+      track(() => {
+        if (root !== mine) return;
+        mine.className = `${mine.className} npc-pilot-banner--fading`;
+        track(() => { if (root === mine) remove(); }, FADE_MS);
+      }, view.autoHideMs);
     }
   }
 
