@@ -39,14 +39,16 @@ export function observeOutcome({ Hooks, canvas, expect }) {
   const creditTarget = (actor) => {
     const uuids = tokenUuidsFor(actor);
     if (!uuids.length) return null;
-    const ts = tracker.outcome.targets;
-    return uuids.find((u) => ts.some((t) => t.tokenUuid === u && t.hit && t.damage === null)) ?? uuids[0];
+    return uuids.find((u) => tracker.awaitingDamage(u)) ?? uuids[0];
   };
   const on = (name, fn) => { registered.push([name, Hooks.on(name, fn)]); };
 
   on('createChatMessage', (message) => {
     const flags = message?.getFlag?.('lancer', 'attackData');
     if (flags) { tracker.onAttackCard(flags); check(); }
+    // The attacker's own damage card gates which later HP decreases count (speaker actor id).
+    const damage = message?.getFlag?.('lancer', 'damageData');
+    if (damage) { tracker.onDamageCard(damage, message.speaker?.actor); check(); }
   });
   on('preUpdateActor', (actor, changes) => {
     if (!touches(changes) || !tokenUuidsFor(actor).length) return;
