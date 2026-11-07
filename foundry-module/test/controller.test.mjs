@@ -81,3 +81,43 @@ test('the eight displayed alternatives retain tactical variety after unsupported
   assert.equal(review.options.length, 8);
   assert.deepEqual(new Set(review.options.map(o => o.category)), new Set(['aggressive', 'defensive', 'reposition']));
 });
+
+test('auto planning falls back to the top option when the relay fails', async () => {
+  const { controller } = setup(async () => { throw Error('Cannot reach the relay.'); });
+  const review = await controller.plan({ auto: true });
+  assert.equal(review.choice.source, 'fallback');
+  assert.equal(review.choice.status, 'fallback');
+  assert.equal(review.choice.optionId, review.options[0].id);
+  assert.equal(review.choice.reason, 'Model unavailable — top-scoring safe option.');
+  assert.equal(review.choice.line, '');
+  assert.match(review.choice.error, /Cannot reach/);
+});
+
+test('auto planning passes a 30 s timeout; approved planning keeps throwing', async () => {
+  let seen; const { controller } = setup(async (_p, o) => { seen = o.timeoutMs; throw Error('Model request timed out.'); });
+  await controller.plan({ auto: true }); assert.equal(seen, 30000);
+  await assert.rejects(setup(async () => { throw Error('Model request timed out.'); }).controller.plan(), /timed out/);
+});
+
+test('auto planning still throws when cancelled or superseded', async () => {
+  let ctl;
+  const { controller } = setup(async () => { ctl.cancel(); throw Error('Planning cancelled.'); });
+  ctl = controller;
+  await assert.rejects(controller.plan({ auto: true }), /cancelled or superseded/);
+});
+
+test('auto planning keeps a fallback with the brief reason after two unusable replies', async () => {
+  const { controller } = setup(async () => '{"option":"evil"}');
+  const review = await controller.plan({ auto: true });
+  assert.equal(review.choice.source, 'fallback');
+  assert.equal(review.choice.optionId, review.options[0].id);
+  assert.equal(review.choice.reason, 'Model unavailable — top-scoring safe option.');
+});
+
+test('requestDecision honours an explicit timeoutMs', async () => {
+  let aborted = false;
+  const fetchImpl = (_u, init) => new Promise((_, rej) => init.signal.addEventListener('abort', () => { aborted = true; rej(Error('abort')); }));
+  await assert.rejects(requestDecision({messages:[{role:'user',content:'x'}]},
+    {relayUrl:'http://127.0.0.1:5090',secret:'s',provider:'openai'}, {fetchImpl, timeoutMs: 20}), /timed out/);
+  assert(aborted);
+});

@@ -5,6 +5,9 @@ import { selectPolicyDecision } from '../core/policy.mjs';
 import { explainEvaluation } from '../core/policy-metrics.mjs';
 import { generatePolicyCandidates } from './policy-candidates.mjs';
 
+const AUTO_MODEL_TIMEOUT_MS = 30000;
+const AUTO_FALLBACK_REASON = 'Model unavailable — top-scoring safe option.';
+
 /** Pure orchestration with injected I/O. Only approve() can reach execution. */
 export class PilotController {
   #epoch = 0;
@@ -22,7 +25,7 @@ export class PilotController {
     this.#pending?.abort(); this.#pending = null; this.#review = null;
   }
 
-  async plan() {
+  async plan({ auto = false } = {}) {
     if (this.#executing) throw Error('An approved option is still executing.');
     this.cancel();
     const epoch = this.#epoch;
@@ -39,10 +42,20 @@ export class PilotController {
     const signal = this.#pending.signal;
     let choice;
     try {
+      const gone = () => epoch !== this.#epoch || signal.aborted;
+      const autoFallback = error => ({ status: 'fallback', source: 'fallback', optionId: options[0].id,
+        reason: AUTO_FALLBACK_REASON, line: '', error });
       for (let attempt = 0; attempt < 2; attempt++) {
-        const text = await this.request(structuredClone(payload), { signal });
+        let text;
+        try { text = await this.request(structuredClone(payload), auto ? { signal, timeoutMs: AUTO_MODEL_TIMEOUT_MS } : { signal }); }
+        catch (e) {
+          if (!auto) throw e;
+          if (gone()) throw Error('Planning was cancelled or superseded.');
+          choice = autoFallback(e?.message ?? String(e)); break;
+        }
         if (epoch !== this.#epoch) throw Error('Planning was cancelled or superseded.');
         choice = interpretReply(text, options, { attempt });
+        if (choice.status === 'fallback' && auto) choice = autoFallback(choice.error);
         if (choice.status !== 'retry') break;
         payload.messages.push({ role: 'assistant', content: text },
           { role: 'user', content: retryMessage(choice.error, options) });
@@ -123,7 +136,7 @@ export class PilotController {
 }
 
 /** Browser -> local relay. API keys never enter this interface. */
-export async function requestDecision(payload, settings, { fetchImpl = fetch, signal } = {}) {
+export async function requestDecision(payload, settings, { fetchImpl = fetch, signal, timeoutMs } = {}) {
   const url = new URL(settings.relayUrl);
   if (url.username || url.password || url.search || url.hash || url.pathname !== '/')
     throw Error('Use a relay origin without credentials, path, query or fragment.');
@@ -131,7 +144,7 @@ export async function requestDecision(payload, settings, { fetchImpl = fetch, si
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) throw Error('Relay requires HTTPS or HTTP loopback.');
   if (!settings.secret) throw Error('Configure the relay shared secret on this GM client.');
   if (!['anthropic', 'openai'].includes(settings.provider)) throw Error('Choose a supported provider.');
-  const timeout = AbortSignal.timeout(settings.timeoutMs ?? 125000);
+  const timeout = AbortSignal.timeout(timeoutMs ?? settings.timeoutMs ?? 125000);
   const requestSignal = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let response;
   try {
