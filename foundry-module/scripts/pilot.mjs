@@ -8,6 +8,14 @@ import { createGrappleController } from './adapter/grapple-controller.mjs';
 import { createShieldController } from './adapter/shield-controller.mjs';
 import { registerTrampleHistory } from './adapter/trample-hooks.mjs';
 import { registerGrappleMovementGuard } from './adapter/grapple-movement-guard.mjs';
+import { shouldAutoRun } from './core/auto-mode.mjs';
+import { createTurnRunner } from './adapter/turn-runner.mjs';
+import { createBannerChannel } from './adapter/banner.mjs';
+import { portraitFor } from './core/banner.mjs';
+import { observeOutcome } from './adapter/outcome-observer.mjs';
+import { createBanter, postChatMessage } from './adapter/banter.mjs';
+import { warmUpModel } from './adapter/warmup.mjs';
+import { buildOutcomeExpectation, turnKeyFor } from './adapter/auto-wiring.mjs';
 
 export function registerSettings(game) {
   game.settings.register(MODULE_ID,'decisionMode',{name:'Decision mode',scope:'client',config:true,type:String,
@@ -20,6 +28,18 @@ export function registerSettings(game) {
     ['provider', 'Provider', String, 'openai', 'client', false],
     ['model', 'Model override', String, '', 'client', false],
   ]) game.settings.register(MODULE_ID, key, { name, scope, config, type, default: value });
+  game.settings.register(MODULE_ID,'autoMode',{name:'Auto mode: run NPC turns without approval',
+    hint:'Hostile and friendly NPC turns play themselves when they start. Requires token execution to be enabled; the GM can opt an NPC out with api.setAutoOptOut(actor, true).',
+    scope:'world',config:true,type:Boolean,default:false});
+  game.settings.register(MODULE_ID,'autoRoll',{name:"Auto-roll: press Lancer's roll and apply buttons for AI attacks",
+    hint:'Separate from auto mode. Pilot only presses the native buttons; it never rolls or edits outcomes itself.',
+    scope:'world',config:true,type:Boolean,default:false});
+  game.settings.register(MODULE_ID,'banterEnabled',{name:'NPC banter',
+    hint:'NPCs speak a short in-character line before and after their attack.',scope:'world',config:true,type:Boolean,default:false});
+  game.settings.register(MODULE_ID,'banterProvider',{name:'Banter provider',scope:'client',config:true,type:String,
+    choices:{openai:'Local / OpenAI compatible',anthropic:'Anthropic API (paid)'},default:'openai'});
+  game.settings.register(MODULE_ID,'banterModel',{name:'Banter model override',hint:"Leave blank to use the relay's configured model.",
+    scope:'client',config:true,type:String,default:''});
   game.keybindings.register(MODULE_ID, 'planTurn', { name: 'Plan the active NPC turn',
     editable: [{ key: 'KeyP', modifiers: ['ALT'] }], restricted: true,
     onDown: () => { const api = game.modules.get(MODULE_ID)?.api; if (!api) return false;
@@ -32,6 +52,11 @@ export function registerSettings(game) {
 export function initializePilot({ game, canvas, constants, Hooks, DialogV2, ChatMessage, notifications, locks = globalThis.navigator?.locks }) {
   if(game.system?.id!=='lancer')return null;
   registerGrappleMovementGuard({canvas,Hooks,notifications});
+  // Banners render on every client; the End-turn button only appears for the GM.
+  let runner=null;
+  const banner=game.socket?.on&&globalThis.document
+    ?createBannerChannel({game,document:globalThis.document,onEndTurn:()=>{Promise.resolve(runner?.endTurnAnyway()).catch(e=>notifications?.error?.(e.message));}})
+    :{show(){},clear(){},dispose(){}};
   if (!game.user?.isGM) return null;
   const setting = key => game.settings.get(MODULE_ID, key);
   const read = options => {
@@ -56,13 +81,64 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     request: (payload, options) => requestDecision(payload, {
       relayUrl: setting('relayUrl'), secret: setting('secret'), provider: setting('provider'), model: setting('model'),
     }, options),
-    execute: (option, board, choice, {verifyDecision}) => (option.mechanics?.id==='cataphract-t1'?executeCataphract:executeOption)(option, board, choice, { game, canvas, read, withLock,verifyDecision,
-      postLine: (line, token) => ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token }),
-        flavor: 'NPC intent — before resolution', content: `<p>${escapeHtml(line)}</p>` }) }),
+    execute: (option, board, rawChoice, {verifyDecision}) => {
+      // With banter on, banter posts the intent line itself (in character); the executor must post nothing.
+      const choice=setting('banterEnabled')===true?{...rawChoice,line:''}:rawChoice;
+      return (option.mechanics?.id==='cataphract-t1'?executeCataphract:executeOption)(option, board, choice, { game, canvas, read, withLock,verifyDecision,
+        postLine: (line, token) => ChatMessage.create({ speaker: ChatMessage.getSpeaker({ token }),
+          flavor: 'NPC intent — before resolution', content: `<p>${escapeHtml(line)}</p>` }) });
+    },
   });
-  let busy = false;
+  let busy = false, autoRunning = false, turnSeq = 0;
+  const getToken = id => canvas.tokens?.get(id);
+  const classNameOf = actor => [...(actor?.items ?? [])].find(i => i.type === 'npc_class')?.name ?? '';
+  const sideOf = token => token?.document?.disposition < 0 ? 'hostile' : token?.document?.disposition > 0 ? 'friendly' : 'neutral';
+  const readSpeaker = tokenId => {
+    const token = getToken(tokenId), actor = token?.actor;
+    if (!token || !actor) throw Error('The speaking token is missing.');
+    return { name: token.name ?? token.document?.name ?? 'NPC', className: classNameOf(actor), side: sideOf(token),
+      round: game.combat?.round ?? 0, portrait: portraitFor(actor, token), token, actorId: actor.id };
+  };
+  const banterSettings = () => ({ enabled: setting('banterEnabled') === true, provider: setting('banterProvider'),
+    model: setting('banterModel'), relayUrl: setting('relayUrl'), secret: setting('secret') });
+  const logWarn = m => globalThis.console?.warn?.(m);
+  const banter = createBanter({ request: requestDecision, postChat: postChatMessage, banner,
+    readSnapshot: () => read().snapshot, readSpeaker, settings: banterSettings, log: logWarn });
+  const readTurnInfo = () => {
+    const token = getToken(game.combat?.combatant?.tokenId), actor = token?.actor;
+    if (!token || !actor) throw Error('There is no active NPC token.');
+    return { name: token.name ?? 'NPC', className: classNameOf(actor), side: sideOf(token), round: game.combat.round,
+      portrait: portraitFor(actor, token), speakerTokenId: token.id, canExecute: canExecute(),
+      terrainReviewed: canvas.scene?.getFlag(MODULE_ID, 'terrain')?.reviewed === true };
+  };
+  const whisperGM = text => ChatMessage.create({ content: `<p>${escapeHtml(text)}</p>`, whisper: ChatMessage.getWhisperRecipients('GM') });
+  runner = createTurnRunner({ controller, banner,
+    observe: (option, board) => observeOutcome({ Hooks, canvas, expect: buildOutcomeExpectation(option, board, { getToken }) }),
+    endTurn: () => game.combat.nextTurn(), whisperGM,
+    openReview: review => api.openReview(review),
+    speakIntent: banter.speakIntent, speakReaction: banter.speakReaction, readTurnInfo, log: logWarn });
   const api = {
     grapples,shield,
+    async setAutoOptOut(actor, value) {
+      if (!game.user.isGM) throw Error('GM only.');
+      return actor.setFlag(MODULE_ID, 'autoOptOut', value === true);
+    },
+    async openReview(review) {
+      if (busy) return;
+      busy = true;
+      let next = null;
+      try {
+        const result = await showReview(review, { DialogV2, canExecute: canExecute() && review.terrainReviewed });
+        if (result?.action === 'execute') {
+          await controller.approve(review, result.optionId);
+          notifications.info('NPC Pilot handed off the approved option. Resolve remaining actions, reactions and damage in Lancer.');
+        } else if (result?.action === 'reask') next = () => api.planTurn();
+        else if (result?.action === 'configure') next = async () => { if (review.mode === 'policy') await api.configurePolicy(); else if (await api.configureRelay()) await api.planTurn(); };
+        else if (result?.action === 'terrain') next = async () => { if (await api.reviewTerrain()) await api.planTurn(); };
+      } catch (e) { notifications.error(e.message); }
+      finally { busy = false; }
+      if (next) await next().catch(e => notifications.error(e.message));
+    },
     async manageGrapples(){
       if(!game.user.isGM||!canvas.scene)throw Error('View the encounter as GM.');
       const links=canvas.scene.getFlag(MODULE_ID,'grapples')??[];
@@ -124,7 +200,7 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
     },
     async planTurn() {
       if (!game.user.isGM) throw Error('GM only.');
-      if (busy) { notifications.info('NPC Pilot is already planning or reviewing a turn.'); return; }
+      if (busy || autoRunning) { notifications.info('NPC Pilot is already planning or reviewing a turn.'); return; }
       busy = true;
       try {
         await history.settled();
@@ -147,16 +223,43 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
         }
       } finally { controller.cancel(); busy = false; }
     },
-    cancel: () => controller.cancel(),
+    cancel: () => { runner.cancel(); controller.cancel(); },
   };
   Hooks.on('updateCombat', (combat, changes) => {
     if (!('turn' in changes || 'round' in changes)) return;
+    const seq = ++turnSeq;
+    runner.cancel();
     controller.cancel();
     const token = canvas.tokens?.get(combat.combatant?.tokenId);
-    if (setting('promptOnTurn') && isResponsibleGM(game) && token?.actor?.type === 'npc' && !busy)
-      void history.settled().then(()=>api.planTurn()).catch(e => notifications.error(e.message));
+    const actor = token?.actor;
+    const gate = shouldAutoRun({ autoMode: setting('autoMode') === true, executionEnabled: setting('executionEnabled') === true,
+      isResponsibleGM: isResponsibleGM(game), actorOptOut: actor?.getFlag?.(MODULE_ID, 'autoOptOut') === true,
+      isNpc: actor?.type === 'npc', side: sideOf(token) });
+    if (gate.auto && !busy) {
+      const key = turnKeyFor(combat);
+      autoRunning = true;
+      void history.settled().then(() => { if (seq === turnSeq) return runner.run(key); })
+        .catch(e => notifications.error(e.message)).finally(() => { if (seq === turnSeq) autoRunning = false; });
+      return;
+    }
+    // Auto mode implies the turn prompt; when a gate is closed the GM still gets the manual proposal.
+    if ((setting('promptOnTurn') || setting('autoMode')) && isResponsibleGM(game) && actor?.type === 'npc' && !busy)
+      void history.settled().then(() => { if (seq === turnSeq) return api.planTurn(); }).catch(e => notifications.error(e.message));
   });
-  Hooks.on('canvasTearDown', () => controller.cancel());
+  Hooks.on('deleteCombat', () => runner.cancel());
+  Hooks.on('canvasTearDown', () => { runner.cancel(); controller.cancel(); });
+  void (async () => {
+    try {
+      if (!isResponsibleGM(game)) return;
+      if (setting('autoMode') === true && setting('executionEnabled') !== true)
+        notifications.warn('NPC Pilot: auto mode needs token execution enabled. NPC turns will offer a proposal instead.');
+      const providers = [];
+      const base = { relayUrl: setting('relayUrl'), secret: setting('secret') };
+      if ((setting('decisionMode') ?? 'model') === 'model') providers.push({ ...base, provider: setting('provider'), model: setting('model') });
+      if (setting('banterEnabled') === true) providers.push({ ...base, provider: setting('banterProvider'), model: setting('banterModel') });
+      if (providers.length) await warmUpModel({ request: requestDecision, providers, notifications });
+    } catch (e) { logWarn(`NPC Pilot: warm-up skipped: ${e?.message ?? e}`); }
+  })();
   return api;
 }
 
