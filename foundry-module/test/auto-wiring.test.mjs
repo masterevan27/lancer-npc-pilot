@@ -119,3 +119,25 @@ test('cancelling before history settles prevents a queued auto run from starting
     assert.equal(h.fetches.length, 0);
   } finally { h.done(); }
 });
+
+// ---- final-review regression: auto gate re-checked at every executor checkpoint ----
+test('turning auto mode off during the reservation write never starts the native attack (final review 1)', async () => {
+  const h = harness();
+  try {
+    await tick(); h.fetches.length = 0;
+    const npc = h.env.canvas.tokens.placeables[0];
+    let began = 0, setTargets = 0;
+    npc.actor.items[0].beginWeaponAttackFlow = async () => { began++; };
+    let reserved = 0;
+    npc.actor.setFlag = async () => { reserved++; h.values.autoMode = false; };
+    npc.actor.update = async d => { if (d['system.action_tracker']) npc.actor.system.action_tracker = d['system.action_tracker']; };
+    h.env.canvas.tokens.setTargets = async () => { setTargets++; };
+    h.turn(1); await tick();
+    assert.equal(h.fetches.length, 1, 'auto planning requested the model');
+    h.fetches[0](new Error('down')); await tick(); await tick();
+    assert.equal(reserved, 1, 'the turn reached the reservation write');
+    assert.equal(began, 0, 'native attack flow never began');
+    assert.equal(h.nextTurns, 0);
+    assert(h.chats.some(c => c.whisper), 'GM was told the turn is held');
+  } finally { h.done(); }
+});

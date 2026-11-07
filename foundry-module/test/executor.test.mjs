@@ -155,3 +155,24 @@ test('unsupported mode APIs, versions, tiers or modified items fail before any m
     assert.equal(s.calls.length, 0);
   }
 });
+
+test('a native attack flow that reports false is returned as attack-cancelled (final review 6)', async () => {
+  const s = setup();
+  s.token.actor.items.get = () => ({ beginWeaponAttackFlow: async () => false });
+  const r = await executeOption(s.option, s.board, {}, s.env);
+  assert.equal(r.status, 'attack-cancelled');
+});
+
+test('any other native flow result keeps handed-to-lancer (final review 6)', async () => {
+  for (const value of [undefined, true, null, 0, { ok: true }]) {
+    const s = setup();
+    s.token.actor.items.get = () => ({ beginWeaponAttackFlow: async () => value });
+    assert.equal((await executeOption(s.option, s.board, {}, s.env)).status, 'handed-to-lancer', String(value));
+  }
+});
+
+test('a cancelled mode flow begin() reports attack-cancelled (final review 6)', async () => {
+  const s = modeSetup('ranged');
+  s.WeaponAttackFlow.prototype.begin = async function () { return false; };
+  assert.equal((await executeOption(s.option, s.board, {}, s.env)).status, 'attack-cancelled');
+});

@@ -88,6 +88,16 @@ export function createTurnRunner({
         try { ctx.observer = observe(option, review); } catch (err) { return hold(`Could not observe the attack: ${err?.message ?? err}`); }
       }
 
+      // The acting summary fades after its display time; keep an End turn control on screen for the whole
+      // wait, including while approve() itself awaits the human-operated native attack HUD.
+      if (isAttack) {
+        ctx.waitTimer = setTimeout(() => {
+          ctx.waitTimer = null;
+          if (ctx.aborted) return;
+          safe(() => banner.show(bannerView({kind: 'waiting', name: info.name, className: info.className, side: info.side, portrait: info.portrait})));
+        }, actingMs);
+      }
+
       let result;
       try {
         result = await controller.approve(review, step.optionId);
@@ -96,16 +106,11 @@ export function createTurnRunner({
       }
       if (ctx.aborted) return exit();
       if (result === false || result?.ok === false) return hold('The roll flow did not complete.');
+      if (result?.status === 'attack-cancelled') return hold('The attack was cancelled in Lancer. Resolve the turn manually.');
 
       lc.handedOff({expectsAttack: isAttack});
 
       if (isAttack) {
-        // The acting summary fades after its display time; keep an End turn control on screen for the rest of the wait.
-        ctx.waitTimer = setTimeout(() => {
-          ctx.waitTimer = null;
-          if (ctx.aborted) return;
-          safe(() => banner.show(bannerView({kind: 'waiting', name: info.name, className: info.className, side: info.side, portrait: info.portrait})));
-        }, actingMs);
         let outcome;
         try {
           outcome = await Promise.race([ctx.observer.done, abortSignal]);

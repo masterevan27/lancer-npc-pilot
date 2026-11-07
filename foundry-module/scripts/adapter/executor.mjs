@@ -113,9 +113,9 @@ export async function executeOption(option, board, choice, { game, canvas, read,
     if (kind === 'attack') {
       await canvas.tokens.setTargets(option.action.targetTokenIds, { mode: 'replace' });
       checkBoard();
-      if (modeFlow) await modeFlow.begin();
-      else await item.beginWeaponAttackFlow();
-      return { status: 'handed-to-lancer' };
+      const begun = modeFlow ? await modeFlow.begin() : await item.beginWeaponAttackFlow();
+      // Lancer resolves a dismissed attack HUD with exactly false; anything else keeps the hand-off.
+      return { status: begun === false ? 'attack-cancelled' : 'handed-to-lancer' };
     }
     return { status: kind === 'hold' ? 'held' : 'moved' };
   });

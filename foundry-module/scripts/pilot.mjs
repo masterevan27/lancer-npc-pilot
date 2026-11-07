@@ -121,9 +121,13 @@ export function initializePilot({ game, canvas, constants, Hooks, DialogV2, Chat
   // The auto runner may only execute while the full gate is still open for the same turn.
   const autoController = { plan: o => controller.plan(o), cancel: () => controller.cancel(),
     approve: (review, optionId) => {
-      if (!autoGate(game.combat).auto || !autoKey || turnKeyFor(game.combat) !== autoKey)
-        throw Error('Auto mode was turned off or the turn changed. Continue manually.');
-      return controller.approve(review, optionId);
+      const stillAuto = () => {
+        if (!autoGate(game.combat).auto || !autoKey || turnKeyFor(game.combat) !== autoKey)
+          throw Error('Auto mode was turned off or the turn changed. Continue manually.');
+      };
+      stillAuto();
+      // Re-evaluated at every executor checkpoint, not only before the hand-off starts.
+      return controller.approve(review, optionId, { verify: stillAuto });
     } };
   runner = createTurnRunner({ controller: autoController, banner,
     observe: (option, board) => observeOutcome({ Hooks, canvas, expect: buildOutcomeExpectation(option, board, { getToken }) }),

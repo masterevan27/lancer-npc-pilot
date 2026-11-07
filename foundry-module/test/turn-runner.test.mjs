@@ -16,7 +16,7 @@ function rig(over = {}) {
     calls, banners,
     controller: {
       plan: async () => { calls.push('plan'); return over.review ?? mkReview(attackOption); },
-      approve: async () => { calls.push('approve'); if (over.approveThrows) throw new Error('boom'); return 'approveResult' in over ? over.approveResult : {status: 'handed-to-lancer'}; },
+      approve: async () => { calls.push('approve'); if (over.approvePending) await over.approvePending; if (over.approveThrows) throw new Error('boom'); return 'approveResult' in over ? over.approveResult : {status: 'handed-to-lancer'}; },
       cancel: () => calls.push('controller.cancel'),
     },
     banner: {show: v => { banners.push(v.kind); d.views.push(v); }, clear: () => banners.push('clear')}, views: [],
@@ -215,4 +215,26 @@ test('no waiting banner appears once the outcome resolves quickly', async () => 
   assert.equal(await runner.run('k'), 'done');
   await wait(20);
   assert.ok(!d.banners.includes('waiting'));
+});
+
+test('waiting banner with End turn appears while approve() still awaits the native HUD (final review 6)', async () => {
+  let release; const approvePending = new Promise(r => { release = r; });
+  const d = rig({approvePending, done: new Promise(() => {})});
+  const runner = createTurnRunner(d);
+  const p = runner.run('k');
+  await wait(40);
+  assert.deepEqual(d.banners.filter(b => b !== 'clear').slice(0, 3), ['thinking', 'acting', 'waiting']);
+  release(); await wait(10);
+  await runner.endTurnAnyway(); await p;
+  assert.equal(d.banners.filter(b => b === 'waiting').length, 1, 'the waiting banner is not shown twice');
+});
+
+test('an attack-cancelled hand-off holds the turn instead of completing it (final review 6)', async () => {
+  const d = rig({approveResult: {status: 'attack-cancelled'}});
+  assert.equal(await createTurnRunner(d).run('k'), 'held');
+  assert.ok(d.calls.includes('whisper'));
+  assert.ok(d.banners.includes('held'));
+  assert.ok(!d.calls.includes('endTurn'));
+  assert.ok(!d.calls.includes('speakReaction'));
+  assert.ok(d.calls.includes('dispose'));
 });

@@ -107,7 +107,7 @@ export class PilotController {
     } finally { if(epoch===this.#epoch) this.#pending=null; }
   }
 
-  async approve(review, optionId) {
+  async approve(review, optionId, { verify } = {}) {
     const stored = this.#review;
     if (this.#executing || !stored || stored.public !== review) throw Error('This review expired or was already used. Re-plan.');
     if (!['ready','partial'].includes(stored.state) || !stored.options.length) throw Error('This policy needs input or configuration. Re-plan or play manually.');
@@ -129,6 +129,7 @@ export class PilotController {
       if(!this.canExecute()) throw Error('Execution is disabled. Continue manually.');
       if(this.readDecisionConfig(board).stamp!==stored.config.stamp)
         throw Error('The decision configuration changed. Re-plan before execution.');
+      verify?.(board);
     };
     try { return await this.execute(structuredClone(option), fresh, structuredClone(stored.choice), {verifyDecision}); }
     finally { this.#executing = false; }
