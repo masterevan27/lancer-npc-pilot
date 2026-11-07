@@ -100,7 +100,7 @@ review dialog, using the existing legality, stale-board and replay guards. Any
 refusal, missing input or changed board falls back to GM review or a held turn,
 never a guess. Rolls stay in Lancer's native windows, clicked by a human (auto-roll is deferred). Auto mode
 ends only its own NPC's turn, after observed applied damage or a resolved miss,
-with an "End turn anyway" control; it never activates the next combatant. In model
+with an "End turn" control; it never activates the next combatant. In model
 mode, a relay failure or a 30-second silence plays the top-scoring safe option, and
 a warm-up request with a notification readies the local model when the module
 loads. Every client sees the agreed angled banner with
@@ -117,8 +117,8 @@ Acceptance: an off-by-default toggle produces up to two lines per NPC turn — a
 intent line before the roll that never claims an outcome, and a reaction line
 written only from the outcome Lancer recorded (none when ambiguous). Repeats and
 near-repeats are suppressed. Lines appear as a speech banner with the speaker's
-portrait and as an in-character chat message. Generation never blocks or changes
-the turn; failure drops the line. The local model is the default; paid providers
+portrait and as an in-character chat message. Intent generation can delay execution by up to 4 s and a failure drops the line; reaction generation
+never delays turn completion. The local model is the default; paid providers
 need explicit selection. The key stays relay-side.
 
 ### play-full-turns: Complete NPC turns

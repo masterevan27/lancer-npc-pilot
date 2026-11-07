@@ -59,7 +59,7 @@ stale_after: 2027-01-30T00:00:00Z
 Version 0.3.0 extends the GM-only Foundry v13 module with hex and mixed Size ½/1
 geometry. Version 0.2.0 was installed and passed initial staged square-scene
 proposal/Boost checks; full acceptance of 0.3.0 is still pending. Execution and turn prompts default off;
-there is no auto-execute mode. Nothing calls a model until the GM requests a
+there was no auto-execute mode (historical; development 0.10.0 adds an off-by-default [auto mode](#auto-mode-and-banter-development-0100)). Nothing calls a model until the GM requests a
 proposal or explicitly enables turn prompts.
 
 ## Install for a staged scene
@@ -529,7 +529,7 @@ these handlers calls a model relay or reads a provider key.
 Everything in this section is **unverified in live Foundry**. The source has pure
 and adapter tests only; no disposable-world pass has been run.
 
-Settings X:
+Settings:
 
 - **Auto mode** (`autoMode`): hostile and friendly NPC turns plan and execute
   when they start, without the review dialog. It needs token execution enabled
@@ -561,8 +561,10 @@ first turn. Paid providers are never warmed. One notification reports success
 
 Turn end: after the outcome is observed (applied damage or a resolved miss),
 auto mode ends only its own NPC's turn with `game.combat.nextTurn()`. It never
-activates the next combatant for anything else. The banner's **End turn anyway**
-button lets the GM end that turn manually.
+activates the next combatant for anything else. While the attack awaits
+resolution the banner shows "is waiting for Lancer" with an **End turn** button
+(it appears once the acting summary fades, about 3 s after hand-off), and the
+thinking and held banners carry it too. It lets the GM end that turn manually.
 
 Banner: every connected client sees an angled banner, broadcast over the module
 socket, with the token or pilot portrait, red or green side colours, a continuous
@@ -573,11 +575,13 @@ Banter: with the toggle on, an NPC speaks up to two lines per turn: an intent li
 before the roll, which never claims a result, and a reaction line written only
 from the outcome Lancer recorded (none when ambiguous). Repeats are suppressed.
 Lines show as a speech banner and as in-character chat. Failure drops the line;
-generation never blocks or changes the turn.
+the intent line is awaited before execution, so it can delay the attack by up to
+4 s (a failed or slow line is dropped and the turn proceeds); reaction generation
+never delays turn completion.
 
 Known limitation: a cancelled Lancer attack HUD is not visible to Pilot (the
 executor ignores the flow's `begin()` result), so the turn simply waits for the
-GM's **End turn anyway**.
+GM's **End turn** on the waiting banner.
 
 Acceptance still open: a disposable-world pass with one hostile and one friendly
 NPC, covering banner visibility on a second client, fallback, warm-up and banter.
