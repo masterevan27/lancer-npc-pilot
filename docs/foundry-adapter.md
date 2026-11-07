@@ -552,7 +552,7 @@ anti-goals. A possible later approach is pressing the HUD's own submit control,
 which needs an owner-authorized disposable-world pass.
 
 Model fallback: in model mode, a relay failure or 30 seconds of silence plays the
-top-scoring safe option with the reason "Model unavailable". It never guesses.
+top-scoring safe option with the reason "Model unavailable". The 30 seconds are one budget for the whole plan, retry included. It never guesses.
 
 Warm-up: when the module loads, a tiny fixed prompt (no board data) is sent to
 each configured **local** (OpenAI compatible) model so it is loaded before the
@@ -563,8 +563,27 @@ Turn end: after the outcome is observed (applied damage or a resolved miss),
 auto mode ends only its own NPC's turn with `game.combat.nextTurn()`. It never
 activates the next combatant for anything else. While the attack awaits
 resolution the banner shows "is waiting for Lancer" with an **End turn** button
-(it appears once the acting summary fades, about 3 s after hand-off), and the
-thinking and held banners carry it too. It lets the GM end that turn manually.
+(it appears 3 s after the acting summary, even while Lancer's attack window is
+still open and the hand-off has not returned), and the thinking and held banners
+carry it too. It lets the GM end that turn manually.
+
+Outcome attribution: Pilot only reads what Lancer recorded and never infers a
+result from absence.
+
+- A matching attack card resolves only when it has an explicit true or false `hit`
+  for every expected target. A card with an empty or filtered target list, a
+  missing or non-boolean `hit`, or a second card for the same attack is
+  **ambiguous**: the turn is held for the GM (whispered, held banner with
+  **End turn**). Lancer emits empty hit results when automated attack resolution
+  is disabled, so that case holds.
+- Damage needs two steps. After the matching attack card, a damage card
+  (chat flag `lancer.damageData`) spoken by the same attacking actor must list the
+  target in `targetDamageResults`. Only HP or structure decreases on that target
+  after the damage card count as applied. A decrease before the card is ignored;
+  a damage card with no decrease afterwards (for example armor absorbed it) keeps
+  the turn waiting, and a second damage card for the same attack is ambiguous.
+  Residual limitation: an unrelated manual HP edit made on a target after its
+  damage card could still be counted as that attack's damage.
 
 Banner: every connected client sees an angled banner, broadcast over the module
 socket, with the token or pilot portrait, red or green side colours, a continuous
@@ -579,9 +598,27 @@ the intent line is awaited before execution, so it can delay the attack by up to
 4 s (a failed or slow line is dropped and the turn proceeds); reaction generation
 never delays turn completion.
 
-Known limitation: a cancelled Lancer attack HUD is not visible to Pilot (the
-executor ignores the flow's `begin()` result), so the turn simply waits for the
-GM's **End turn** on the waiting banner.
+Banter in GM-approved play: with banter on, pressing **Execute** in the review
+dialog also speaks the intent line before the hand-off (the model's own line when
+the GM picked its choice, otherwise a fresh one) and, for an attack, a reaction
+line when the observed outcome is a resolved miss or applied damage. Nothing
+advances the turn in approved play. A turn change or cancel disposes the observer
+and silences any pending line; with banter off, approved play is unchanged.
+
+Banter is checked by rule-based filters, not by understanding. Intent lines are
+dropped when they state damage, a hit, a kill or a miss as having happened
+(including "took six damage", "that shot hit Cicada", "is down"). Reaction lines
+are dropped when they contradict the recorded outcome: a hit, damage or kill after
+a miss, a kill when nothing was destroyed, or damage when every hit took none.
+Unusual phrasings can still slip through. Tokens with the Lancer Hidden status or
+hidden by the GM are never mentioned. A late reply after a cancel publishes
+neither chat nor banner.
+
+A cancelled Lancer attack HUD: when Lancer's flow `begin()` reports exactly
+`false`, the executor returns `attack-cancelled` and the turn is held (whisper and
+held banner with **End turn**) instead of waiting. Any other result is treated as
+a normal hand-off, and a HUD closed without a `false` result still leaves the
+turn waiting for the GM's **End turn** on the waiting banner.
 
 Acceptance still open: a disposable-world pass with one hostile and one friendly
 NPC, covering banner visibility on a second client, fallback, warm-up and banter.
