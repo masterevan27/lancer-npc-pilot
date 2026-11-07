@@ -1,0 +1,2 @@
+{"origin":"npc1","attackerUuid":"Actor.npc1","attackerItemUuid":"Item.ram",
+ "targets":[{"id":"cicada","uuid":"Scene.s.Token.cicada","total":19,"hit":true,"crit":false}]}
