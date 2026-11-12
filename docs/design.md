@@ -1,3 +1,17 @@
+---
+type: Design
+title: "Lancer NPC Pilot design"
+description: "Intent, anti-goals, architecture and milestones for the GM-approved Lancer NPC co-pilot."
+status: draft
+tags: [architecture, foundry]
+sources:
+  - resource: ../foundry-module/scripts/pilot.mjs
+  - resource: ../foundry-module/scripts/core/README.md
+  - resource: ../relay/server.mjs
+generated:
+  by: claude/claude-opus-5-5
+  at: 2026-11-07T06:20:41Z
+---
 # Lancer NPC Pilot — design
 
 Status: design from 2026-10-31; relay, core and the first Foundry adapter subset

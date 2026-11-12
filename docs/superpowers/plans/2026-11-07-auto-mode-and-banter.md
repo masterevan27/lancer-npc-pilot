@@ -1,3 +1,15 @@
+---
+type: Plan
+title: "Auto mode and banter implementation plan"
+description: "Hands-off NPC turns with a shared turn banner and situational NPC lines before and after native resolution."
+status: draft
+tags: [foundry, planning, auto-mode, banter, playable-2v2]
+sources:
+  - resource: ../specs/2026-11-07-auto-mode-and-banter-design.md
+generated:
+  by: claude/claude-opus-5-5
+  at: 2026-11-07T05:39:02Z
+---
 # Auto mode and banter implementation plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

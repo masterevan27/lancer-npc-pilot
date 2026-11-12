@@ -1,3 +1,20 @@
+---
+type: Runbook
+title: "Versioning and Foundry releases"
+description: "Version source, increment rules and the Foundry release packaging procedure."
+status: draft
+tags: [operations, release]
+sources:
+  - resource: ../VERSION
+  - resource: ../package.json
+  - resource: ../foundry-module/module.json
+  - resource: ../tools/build-release.ps1
+  - resource: ../.github/workflows/release.yml
+generated:
+  by: codex/unrecorded
+  at: 2026-11-02T05:41:34Z
+stale_after: 2027-02-09T00:00:00Z
+---
 # Versioning
 
 The root `VERSION` file holds the project version (SemVer). It stays `0.x`

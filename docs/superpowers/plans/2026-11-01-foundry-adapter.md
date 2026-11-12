@@ -1,3 +1,15 @@
+---
+type: Plan
+title: "Foundry adapter implementation plan"
+description: "Connect the pure core and relay to a GM-only Foundry module with review before execution."
+status: draft
+tags: [foundry, planning]
+sources:
+  - resource: ../../design.md
+generated:
+  by: codex/unrecorded
+  at: 2026-11-01T07:23:48Z
+---
 # Foundry adapter implementation plan
 
 > Execute inline using superpowers:executing-plans; the owner's original instruction was to start building without a question round.

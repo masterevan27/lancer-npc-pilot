@@ -1,3 +1,17 @@
+---
+type: Plan
+title: "T1 Cataphract special mechanics plan"
+description: "Milestone 2: Trample, Impale with native save continuation and Point-Defense Shield resistance."
+status: draft
+tags: [foundry, planning, npc-coverage]
+sources:
+  - resource: ../specs/2026-11-03-npc-policy-contract-design.md
+  - resource: 2026-11-01-full-npc-coverage.md
+  - resource: ../../review-evidence/2026-11-03-cataphract-source-review.md
+generated:
+  by: codex/unrecorded
+  at: 2026-11-04T02:12:05Z
+---
 # T1 Cataphract Special Mechanics Implementation Plan
 
 > **For agentic workers:** Use superpowers:executing-plans to implement this plan inline. Steps use checkbox syntax. Independent final review follows the project's two-round limit.

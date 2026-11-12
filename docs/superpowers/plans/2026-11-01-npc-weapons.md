@@ -1,3 +1,16 @@
+---
+type: Plan
+title: "NPC weapon diagnostics and reviewed modes"
+description: "First REQ-3 chunk: per-weapon exclusion diagnostics and reviewed Ram Cannon attack modes."
+status: draft
+tags: [foundry, planning, npc-coverage]
+sources:
+  - resource: ../../design.md
+  - resource: ../../../foundry-module/scripts/adapter/weapons.mjs
+generated:
+  by: codex/unrecorded
+  at: 2026-11-02T04:25:27Z
+---
 # NPC weapon diagnostics and reviewed modes
 
 **Goal:** Deliver the first REQ-3 chunk in the existing planning-errors checkout, preserving REQ-2.

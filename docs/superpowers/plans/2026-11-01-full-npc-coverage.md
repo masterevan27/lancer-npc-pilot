@@ -1,3 +1,16 @@
+---
+type: Plan
+title: "Full installed NPC coverage implementation plan"
+description: "Plan and hand off the installed NPC roster weapons and specials with tested legality, costs, timing and native outcomes."
+status: draft
+tags: [foundry, planning, npc-coverage]
+sources:
+  - resource: ../../design.md
+  - resource: ../../review-evidence/2026-11-02-coverage-diagnostics.md
+generated:
+  by: codex/unrecorded
+  at: 2026-11-03T06:10:04Z
+---
 # Full Installed NPC Coverage Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

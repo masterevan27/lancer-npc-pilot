@@ -1,3 +1,16 @@
+---
+type: Reference
+title: "Scoped execution acceptance 2026-11-02"
+description: "Agent-observed development 0.5.0 execution results, fixes and remaining gates in the disposable TEST COPY world."
+status: draft
+tags: [foundry, testing]
+sources:
+  - resource: ../../foundry-module/scripts/adapter/executor.mjs
+  - resource: ../../foundry-module/scripts/adapter/weapon-flow.mjs
+generated:
+  by: codex/unrecorded
+  at: 2026-11-03T06:10:04Z
+---
 # Scoped execution acceptance — 2026-11-02
 
 Agent: Codex / unrecorded. This is agent evidence, not human acceptance.

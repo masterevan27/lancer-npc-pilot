@@ -78,4 +78,6 @@ relay is installed and updated separately. See [release instructions](docs/VERSI
 and the [staged setup guide](docs/foundry-adapter.md). Packaging support does not
 establish live acceptance; use a disposable world first.
 
+All project documentation is listed in the [documentation index](docs/index.md).
+
 License: GPL-3.0-or-later.

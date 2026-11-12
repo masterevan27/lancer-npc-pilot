@@ -13,3 +13,6 @@ the world data or the repository.
 - Cloud agents can't reach `*.lab.spiralfrenzy.com` or the owner's PC. Mark live
   Foundry or Ollama behavior as unverified.
 - Version is the root `VERSION` file; see [docs/VERSIONING.md](docs/VERSIONING.md).
+- Docs: start at [docs/index.md](docs/index.md). The bundle follows the pinned OKF
+  profile in `.okf/tools`; install with `npm ci --prefix .okf/tools --ignore-scripts
+  --no-audit --no-fund` and check with `node .okf/tools/cli.mjs check .`.

@@ -78,7 +78,7 @@ uses the owner's supplied Core Book page 297 excerpt. Neither whole PDF nor
 The Long Rim was independently reviewed for this roadmap. Later policy work
 must identify the applicable source/version and resolve installed-data or
 errata discrepancies explicitly. Do not track full copyrighted rule exports.
-No pinned OKF bundle/checker is present; its adoption remains outside this task.
+The documentation bundle is checked with the pinned OKF tools; see the [documentation index](index.md).
 
 ## Priority milestone: playable 2v2
 
