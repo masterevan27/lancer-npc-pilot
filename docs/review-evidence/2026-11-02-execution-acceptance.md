@@ -24,6 +24,14 @@ entered or mutated. No paid inference was used. Full NPC coverage remains open.
 - Lancer Automations inserts a step before native weapon initialization. The
   flow guard now requires unique initialization before the HUD and roll steps,
   preserving registered hooks rather than requiring initialization at index zero.
+  The 0.4.1 refusal came from requiring `Flow.steps[0] === 'initAttackData'`,
+  which Lancer Automations breaks by prepending `lancer-automations:throwChoice`.
+  The check now requires exactly one `initAttackData`, then `showAttackHUD`, then
+  `rollAttacks`. The moving token's bookkeeping fields excluded from the board
+  guard are `flags.lancer-automations.moveHistory`, `flags.about-face.prevPos` and
+  `flags.about-face.direction`, plus sign normalization of `texture.scaleX` and
+  `texture.scaleY` (`snapshot.mjs`, `execution-state.mjs`). Regression tests:
+  `lancer-weapon-flow.test.mjs`.
 - Foundry v13 targeting uses `canvas.tokens.setTargets` with replacement mode.
   Missing targeting capability is detected before spending actions.
 - Approved native movement updates Lancer Automations movement history, About

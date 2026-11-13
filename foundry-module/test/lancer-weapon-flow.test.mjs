@@ -53,3 +53,65 @@ test('reviewed modes retain installed Lancer initialization, tier accuracy and a
     assert.deepEqual([...calls[0].targets], ['target']);
   }
 });
+
+// Self-contained check (no installed Lancer): prepended Lancer Automations step fixture.
+async function modeFlowFixture(mode, { cancel = false } = {}) {
+  const { environment } = await import('./adapter.test.mjs');
+  const fixture = JSON.parse(fs.readFileSync(new URL('./fixtures/ram-cannon.json', import.meta.url)));
+  const env = environment(), token = env.canvas.tokens.placeables[0], actor = token.actor;
+  actor.system.tier = 1;
+  const item = { id: 'ram', ...structuredClone(fixture), currentProfile() {
+    const s = this.system;
+    return { type: s.weapon_type.includes('Melee') ? 'Melee' : null,
+      range: s.range, damage: s.damage[0], accuracy: s.accuracy[0], attack: s.attack_bonus[0] };
+  } };
+  actor.items = [item];
+  const log = [];
+  class WeaponAttackFlow {
+    static steps = ['lancer-automations:throwChoice', 'initAttackData', 'showAttackHUD', 'rollAttacks'];
+    constructor(i) { this.state = { actor, item: i, data: {} }; }
+    getStep(name) {
+      return async state => {
+        log.push(name);
+        if (name === 'initAttackData') state.data.acc_diff = { weapon: {} };
+        return !(cancel && name === 'showAttackHUD');
+      };
+    }
+    async begin() {
+      for (const step of this.constructor.steps) if (await this.getStep(step)(this.state) === false) return false;
+      return true;
+    }
+  }
+  const game = { system: { version: '3.1.3' }, lancer: { flows: new Map([['WeaponAttackFlow', WeaponAttackFlow]]) } };
+  return { item, actor, game, Flow: WeaponAttackFlow, log, mode };
+}
+
+const surface = Flow => ({
+  proto: Object.getOwnPropertyNames(Flow.prototype).map(k => [k, Flow.prototype[k]]),
+  steps: [...Flow.steps], own: Object.getOwnPropertyNames(Flow).sort(), registry: Flow.steps,
+});
+
+test('per-instance flow wrapping leaves the Flow prototype, steps and registry unchanged', async () => {
+  for (const mode of ['melee', 'ranged']) {
+    const { item, actor, game, Flow } = await modeFlowFixture(mode);
+    const before = surface(Flow), registryBefore = [...game.lancer.flows.entries()];
+    const flow = prepareModeFlow(item, actor, mode, game);
+    assert.equal(await flow.begin(), true);
+    assert.equal(flow.state.data.attack_type, mode === 'melee' ? 'Melee' : 'Ranged');
+    assert.deepEqual(surface(Flow), before);
+    assert.equal(Flow.steps, before.registry);
+    assert.deepEqual([...game.lancer.flows.entries()], registryBefore);
+    assert.notEqual(flow.getStep, Flow.prototype.getStep);
+    assert.equal(Object.hasOwn(Flow.prototype, 'getStep'), true);
+    assert.equal(Object.hasOwn(flow, 'getStep'), true);
+  }
+});
+
+test('a cancelled begin runs the flow once and is not retried', async () => {
+  for (const mode of ['melee', 'ranged']) {
+    const { item, actor, game, log } = await modeFlowFixture(mode, { cancel: true });
+    const flow = prepareModeFlow(item, actor, mode, game);
+    assert.equal(await flow.begin(), false);
+    assert.deepEqual(log, ['lancer-automations:throwChoice', 'initAttackData', 'showAttackHUD']);
+  }
+});

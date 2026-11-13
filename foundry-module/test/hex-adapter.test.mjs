@@ -147,3 +147,19 @@ test('half-size targets retain their real collision centers and only engage equa
   board = extractSnapshot(env);
   assert(board.snapshot.engagementMoves.includes('1,1>1,2'));
 });
+
+test('hex scenes with Size 1 and Size 0.5 tokens validate and extract without mutating inputs', () => {
+  const env = hexEnvironment(), half = env.canvas.tokens.placeables[1];
+  half.actor.system.size = 0.5; half.document.width = half.document.height = 0.5;
+  const center = env.canvas.grid.getCenterPoint({ i: 3, j: 7 });
+  half.document.x = Math.round(center.x - 25); half.document.y = Math.round(center.y - 25);
+  const plain = () => JSON.parse(JSON.stringify({
+    scene: { id: env.canvas.scene.id, grid: env.canvas.scene.grid, flags: env.canvas.scene.flags },
+    tokens: env.canvas.tokens.placeables.map(t => ({ document: t.document, system: t.actor.system })),
+  }));
+  const before = plain();
+  const board = extractSnapshot(env);
+  assert.equal(board.snapshot.grid.type, 'hex');
+  assert.deepEqual(board.snapshot.tokens.map(t => t.size).sort(), [0.5, 1]);
+  assert.deepEqual(plain(), before);
+});

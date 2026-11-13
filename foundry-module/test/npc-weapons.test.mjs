@@ -47,22 +47,33 @@ test('Ram Cannon modes respect range and LOS', () => {
 });
 
 test('higher tiers, tier overrides and modified Ram Cannon mechanics stay manual with a reason', () => {
-  for (const change of [(_i, t) => { t.actor.system.tier = 2; },
-    (_i, t) => { t.actor.system.tier = 3; },
-    i => { i.system.tier_override = 2; },
-    i => { i.system.effect += ' Also push the target.'; },
-    i => { i.system.effect = ''; },
-    i => { i.system.effect = ''; i.system.lid = 'custom_dual_weapon'; },
-    i => { i.system.on_hit = 'Push.'; },
-    i => { i.system.range[0].val = 10; },
-    i => { i.system.damage[0][0].val = '9'; },
-    i => { i.system.weapon_type = 'Superheavy Melee'; }]) {
+  for (const [change, expected] of [
+    [(_i, t) => { t.actor.system.tier = 2; }, /^Ram Cannon T2.3 multiple attacks require manual play\.$/],
+    [(_i, t) => { t.actor.system.tier = 3; }, /^Ram Cannon T2.3 multiple attacks require manual play\.$/],
+    [i => { i.system.tier_override = 2; }, /^Weapon tier override requires manual play\.$/],
+    [i => { i.system.effect += ' Also push the target.'; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/],
+    [i => { i.system.effect = ''; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/],
+    [i => { i.system.effect = ''; i.system.lid = 'custom_dual_weapon'; }, /^Mixed melee\/ranged classification needs reviewed attack modes\.$/],
+    [i => { i.system.on_hit = 'Push.'; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/],
+    [i => { i.system.range[0].val = 10; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/],
+    [i => { i.system.damage[0][0].val = '9'; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/],
+    [i => { i.system.weapon_type = 'Superheavy Melee'; }, /^Ram Cannon payload differs from the reviewed modes; use manual play\.$/]]) {
     const env = environment(), { token, item } = equip(env); change(item, token);
     const result = readToken(token, env.canvas.grid);
     assert.equal(result.weapons.length, 0);
     assert.equal(result.excludedWeapons[0].itemId, 'ram');
-    assert(result.excludedWeapons[0].reason.length > 0);
+    assert.match(result.excludedWeapons[0].reason, expected);
   }
+});
+
+test('a refused tier-2 Ram Cannon appears in the review with its name and reason', () => {
+  const env = environment(), { token } = equip(env, 2);
+  const board = extractSnapshot(env);
+  const reason = 'Ram Cannon T2–3 multiple attacks require manual play.';
+  assert(board.warnings.includes(`${fixture.name}: ${reason}`));
+  const html = renderReview({ ...board, options: [], choice: { source: 'model', reason: '' } }, false);
+  assert(html.includes(fixture.name), 'weapon name rendered');
+  assert(html.includes(reason), 'reason rendered');
 });
 
 test('every refused ordinary weapon has a reason and no usable weapons appears in review', () => {
