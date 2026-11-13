@@ -7,9 +7,11 @@ tags: [foundry, testing]
 sources:
   - resource: ../../foundry-module/scripts/adapter/executor.mjs
   - resource: ../../foundry-module/scripts/adapter/weapon-flow.mjs
+  - resource: ../../foundry-module/scripts/adapter/snapshot.mjs
+  - resource: ../../foundry-module/scripts/adapter/execution-state.mjs
 generated:
-  by: codex/unrecorded
-  at: 2026-11-03T06:10:04Z
+  by: claude-code/claude-sonnet-5-5
+  at: 2026-11-13T10:30:00Z
 ---
 # Scoped execution acceptance — 2026-11-02
 

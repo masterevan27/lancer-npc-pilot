@@ -8,8 +8,8 @@ sources:
   - resource: ../superpowers/specs/2026-11-07-auto-mode-and-banter-design.md
   - resource: ../superpowers/plans/2026-11-07-auto-mode-and-banter.md
 generated:
-  by: claude/claude-opus-5-5
-  at: 2026-11-13T06:00:00Z
+  by: claude-code/claude-opus-5-5
+  at: 2026-11-13T10:30:00Z
 ---
 # Priority milestone: playable 2v2
 
@@ -25,7 +25,7 @@ covers the first two cards. Dashboard line ID: `playable-2v2`.
 
 ## play-auto-mode: Hands-off NPC turns with a shared turn banner
 
-Status: active; 0.10.0 source implemented on branch claude/auto-mode-banter, live acceptance open.
+Status: active; 0.10.0 source landed on local `main` (branch `claude/auto-mode-banter` merged at `85884a3`), live acceptance open.
 Auto-roll is blocked and removed from 0.10.0: Lancer 3.1.3's damage HUD is not exposed to modules, so humans click Lancer's roll, damage and apply windows. A possible later approach is pressing the HUD's own submit control, which needs an owner-authorized disposable-world pass.
 
 Acceptance: an off-by-default GM setting plans and executes NPC turns without the
@@ -43,7 +43,7 @@ disposable-world pass with one hostile and one friendly NPC.
 
 ## play-banter: Situational in-character lines before and after resolution
 
-Status: active; 0.10.0 source implemented on branch claude/auto-mode-banter, live acceptance open.
+Status: active; 0.10.0 source landed on local `main` (branch `claude/auto-mode-banter` merged at `85884a3`), live acceptance open.
 Depends on reading native attack outcomes (new, read-only).
 
 Acceptance: an off-by-default toggle produces up to two lines per NPC turn — an
