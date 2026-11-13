@@ -86,3 +86,9 @@ Acceptance: a version is published through the existing release workflow with th
 owner's push authorization, installed in a disposable copy of the campaign world,
 and a full 2v2 match is played in both configurations. Findings are recorded as
 evidence; the original campaign world is not mutated without explicit authority.
+
+## Related
+
+- [Phase 1: Finish the existing mechanics foundation](phase-1-mechanics.md)
+- [Phase 2: Encode the books' tactical identities](phase-2-tactics.md)
+- [Auto mode and banter (development 0.10.0)](../foundry-adapter/auto-mode-and-banter.md)

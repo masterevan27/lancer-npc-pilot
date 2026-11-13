@@ -95,3 +95,9 @@ every missing/manual mechanic remains visible unless the owner explicitly
 accepts a scope exception. Complete the plan's unit, licensed conformance and
 disposable-world scenarios, including native outcomes, concurrency and Uplink
 coexistence. Preserve original-campaign safety and explicit deployment authority.
+
+## Related
+
+- [Priority milestone: playable 2v2](playable-2v2.md)
+- [Phase 2: Encode the books' tactical identities](phase-2-tactics.md)
+- [Full NPC coverage work and catalogue audit](../foundry-adapter/npc-coverage.md)

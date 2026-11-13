@@ -139,3 +139,11 @@ anti-goals: the AI still never rolls or invents outcomes, execution still needs
 the existing gates, and the key stays relay-side. See the
 [adapter guide](foundry-adapter/auto-mode-and-banter.md) and the
 [design](superpowers/specs/2026-11-07-auto-mode-and-banter-design.md).
+
+## Related
+
+- [Architecture: relay, pure core and adapter](design/architecture.md)
+- [Module policy selector design](design/policy-selector.md)
+- [Foundry adapter setup and acceptance](foundry-adapter.md)
+- [NPC mechanics and tactical behavior roadmap](roadmap.md)
+- [Documentation index](index.md)

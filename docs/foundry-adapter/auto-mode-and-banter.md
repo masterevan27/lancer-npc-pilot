@@ -123,3 +123,10 @@ turn waiting for the GM's **End turn** on the waiting banner.
 
 Acceptance still open: a disposable-world pass with one hostile and one friendly
 NPC, covering banner visibility on a second client, fallback, warm-up and banter.
+
+## Related
+
+- [Module policy mode (development 0.8.0)](policy-mode.md)
+- [What approval and execution do](approval-and-execution.md)
+- [Evidence and live acceptance gates](acceptance-gates.md)
+- [Priority milestone: playable 2v2](../roadmap/playable-2v2.md)

@@ -105,3 +105,10 @@ shown in the card headings of each roadmap page. Every card has acceptance crite
 slugs identify required deliverables rather than calendar promises. No existing
 work-item links were invented, and no Human todo or request acceptance changed.
 The roadmap itself does not implement, land, push or deploy these plans.
+
+## Related
+
+- [Roadmap pages](roadmap/index.md)
+- [Lancer NPC Pilot design](design.md)
+- [Foundry adapter setup and acceptance](foundry-adapter.md)
+- [Documentation index](index.md)

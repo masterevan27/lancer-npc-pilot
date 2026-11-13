@@ -38,3 +38,9 @@ cases. Obtain GM review of class behavior; record exact tested tiers/features
 and remaining gaps. Tactical quality is not established by a higher damage
 score or a passing schema test. Accept individual batches without claiming the
 unfinished roster is complete.
+
+## Related
+
+- [Phase 2: Encode the books' tactical identities](phase-2-tactics.md)
+- [Priority milestone: playable 2v2](playable-2v2.md)
+- [Evidence and live acceptance gates](../foundry-adapter/acceptance-gates.md)

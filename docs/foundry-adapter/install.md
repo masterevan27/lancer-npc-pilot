@@ -81,3 +81,9 @@ Optional **Offer a proposal when an NPC turn starts** is a world setting. It
 only opens planning/review on Foundry's active GM client. It never auto-approves.
 If the combat changes while a dialog is open, discard it and request a new
 proposal. A second tab's request cannot approve the first tab's stored object.
+
+## Related
+
+- [Troubleshooting Plan Turn](troubleshooting.md)
+- [What approval and execution do](approval-and-execution.md)
+- [Versioning and Foundry releases](../VERSIONING.md)

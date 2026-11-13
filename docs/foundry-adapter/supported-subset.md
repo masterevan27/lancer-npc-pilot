@@ -90,3 +90,10 @@ special traits and all accuracy/difficulty in the Lancer HUD. Resolve reactions
 along the route manually; Pilot does not resolve Overwatch. The 0.9.0 handlers
 delegate fixed Trample damage and explicitly approved Shield card applications
 to native damage calculation; weapon rolls and outcomes remain native handoffs.
+
+## Related
+
+- [Troubleshooting Plan Turn](troubleshooting.md)
+- [What approval and execution do](approval-and-execution.md)
+- [Cataphract mechanics (development 0.9.0)](cataphract-mechanics.md)
+- [Full NPC coverage work and catalogue audit](npc-coverage.md)

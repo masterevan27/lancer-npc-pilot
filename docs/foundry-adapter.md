@@ -66,3 +66,10 @@ Each topic below is a separate page so you can read only the part you need.
 
 Design intent and anti-goals are in the [design](design.md); release packaging is
 in [versioning](VERSIONING.md).
+
+## Related
+
+- [Foundry adapter guide (topic pages)](foundry-adapter/index.md)
+- [Lancer NPC Pilot design](design.md)
+- [Versioning and Foundry releases](VERSIONING.md)
+- [Documentation index](index.md)

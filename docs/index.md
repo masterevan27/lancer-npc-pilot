@@ -32,3 +32,8 @@ Read the one you need instead of a whole hub.
 
 - [Relay](../relay/README.md) - Run the model relay on the owner PC.
 - [Pure core](../foundry-module/scripts/core/README.md) - Snapshot contract, options, prompt and reply.
+
+## Related
+
+- [README](../README.md) - Project overview and status.
+- [Agent instructions](../AGENTS.md) - Rules for agents working in this repository.

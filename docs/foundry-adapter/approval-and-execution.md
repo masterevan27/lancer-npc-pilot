@@ -45,3 +45,9 @@ test only, after verifying no action happened, the GM can clear a reservation:
 ```js
 await canvas.tokens.controlled[0].actor.unsetFlag('lancer-npc-pilot', 'lastExecution');
 ```
+
+## Related
+
+- [Install and plan a turn in a staged scene](install.md)
+- [Supported scenes, tokens and weapons](supported-subset.md)
+- [Evidence and live acceptance gates](acceptance-gates.md)

@@ -121,3 +121,9 @@ without assuming uninstalled features. Give every applicable class a reviewed
 source policy or a visible unresolved entry. Review Core Book/Long Rim sources
 where applicable; do not claim expansion or whole-book coverage from filenames.
 Track tactical behavior coverage separately from executable mechanic coverage.
+
+## Related
+
+- [Phase 1: Finish the existing mechanics foundation](phase-1-mechanics.md)
+- [Phase 3: Evaluate behavior and optional model assistance](phase-3-evaluation.md)
+- [Module policy selector design](../design/policy-selector.md)

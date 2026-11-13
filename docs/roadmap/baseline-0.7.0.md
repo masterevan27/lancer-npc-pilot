@@ -41,3 +41,9 @@ The Long Rim was independently reviewed for this roadmap. Later policy work
 must identify the applicable source/version and resolve installed-data or
 errata discrepancies explicitly. Do not track full copyrighted rule exports.
 The documentation bundle is checked with the pinned OKF tools; see the [documentation index](../index.md).
+
+## Related
+
+- [Phase 1: Finish the existing mechanics foundation](phase-1-mechanics.md)
+- [Full NPC coverage work and catalogue audit](../foundry-adapter/npc-coverage.md)
+- [Documentation index](../index.md)

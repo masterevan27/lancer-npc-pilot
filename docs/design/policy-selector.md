@@ -40,3 +40,9 @@ authoritative choices, re-reads board/configuration after hashing and before
 approval, and refuses stale/no-choice/duplicate approval before execution.
 [Selector evidence](../review-evidence/2026-11-03-policy-selector.md) separates
 synthetic ranking tests, installed-code conformance and unverified live gates.
+
+## Related
+
+- [Lancer NPC Pilot design](../design.md)
+- [Architecture: relay, pure core and adapter](architecture.md)
+- [Module policy mode (development 0.8.0)](../foundry-adapter/policy-mode.md)

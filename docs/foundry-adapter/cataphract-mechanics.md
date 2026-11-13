@@ -96,3 +96,10 @@ contests, paired movement and Shield damage require the active GM and enabled
 execution plus explicit review. Mandatory expiry of already-established owned
 effects remains cleanup when execution is disabled. Neither policy planning nor
 these handlers calls a model relay or reads a provider key.
+
+## Related
+
+- [Module policy mode (development 0.8.0)](policy-mode.md)
+- [Supported scenes, tokens and weapons](supported-subset.md)
+- [Full NPC coverage work and catalogue audit](npc-coverage.md)
+- [Evidence and live acceptance gates](acceptance-gates.md)

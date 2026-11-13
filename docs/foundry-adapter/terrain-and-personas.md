@@ -37,3 +37,8 @@ await canvas.tokens.controlled[0].actor.setFlag(
   'lancer-npc-pilot', 'persona', 'Berserker: close to melee and protect allies.'
 );
 ```
+
+## Related
+
+- [Install and plan a turn in a staged scene](install.md)
+- [Supported scenes, tokens and weapons](supported-subset.md)

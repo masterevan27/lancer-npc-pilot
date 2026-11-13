@@ -94,3 +94,10 @@ supported layouts. Uplink hook coexistence was checked with both transports and
 narration polling disabled. These remain scoped observations; the broad boxes
 and full NPC coverage remain open. Development 0.5.1 keeps the review footer
 visible while long proposal content scrolls, verified at 1280×900 and 1024×768.
+
+## Related
+
+- [Install and plan a turn in a staged scene](install.md)
+- [Module policy mode (development 0.8.0)](policy-mode.md)
+- [Review evidence](../review-evidence/index.md)
+- [NPC mechanics and tactical behavior roadmap](../roadmap.md)

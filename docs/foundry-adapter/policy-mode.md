@@ -75,3 +75,10 @@ board/binding/source refusals, ordinary movement and native ranged Ram Cannon
 handoff with HUD cancellation. It includes a real policy UI capture and explicit
 remaining gates; it does not establish the unsupported special mechanics.
 See also [selector implementation evidence](../review-evidence/2026-11-03-policy-selector.md).
+
+## Related
+
+- [Module policy selector design](../design/policy-selector.md)
+- [Cataphract mechanics (development 0.9.0)](cataphract-mechanics.md)
+- [Auto mode and banter (development 0.10.0)](auto-mode-and-banter.md)
+- [Evidence and live acceptance gates](acceptance-gates.md)

@@ -85,3 +85,9 @@ staged acceptance gates.
 
 The updater manages the Foundry module only. Update and restart the local relay
 separately when its code changes. Never package `relay/.env` or provider keys.
+
+## Related
+
+- [Install and plan a turn in a staged scene](foundry-adapter/install.md)
+- [Foundry adapter setup and acceptance](foundry-adapter.md)
+- [Documentation index](index.md)

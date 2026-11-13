@@ -136,3 +136,10 @@ exist. Let the system roll and apply damage under its normal GM confirmation.
 Post the NPC line as a chat message spoken by the token. Re-snapshot before
 executing; if the state changed (the token moved, the target died), re-plan
 instead of executing a stale option.
+
+## Related
+
+- [Lancer NPC Pilot design](../design.md)
+- [Module policy selector design](policy-selector.md)
+- [Pure core README](../../foundry-module/scripts/core/README.md)
+- [Relay README](../../relay/README.md)

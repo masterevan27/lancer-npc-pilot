@@ -20,3 +20,8 @@ Topic pages of the [Foundry adapter setup and acceptance](../foundry-adapter.md)
 ## Evidence
 
 - [Evidence and live acceptance gates](acceptance-gates.md) - Lab environment facts, local conformance checks, the open acceptance checklist and scoped 0.5.0 live checks.
+
+## Related
+
+- [Foundry adapter setup and acceptance](../foundry-adapter.md) - Parent hub page.
+- [Documentation index](../index.md) - Hub for every maintained page.

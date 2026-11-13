@@ -51,3 +51,9 @@ node tools/report-npc-coverage.mjs --chunk 2
 It accounts for all feature/tier records, class/template owners and unassigned
 features. Source classification and implementation gates remain separate from
 executable descriptor support. See the [coverage evidence](../review-evidence/2026-11-02-coverage-diagnostics.md).
+
+## Related
+
+- [Supported scenes, tokens and weapons](supported-subset.md)
+- [Cataphract mechanics (development 0.9.0)](cataphract-mechanics.md)
+- [NPC mechanics and tactical behavior roadmap](../roadmap.md)

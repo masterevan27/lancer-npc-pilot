@@ -30,3 +30,9 @@ for the unreleased 0.3.2 source:
 
 Retry **Plan Turn** after resolving the named issue. These checks never move
 tokens, start combat or link a scene automatically.
+
+## Related
+
+- [Install and plan a turn in a staged scene](install.md)
+- [Supported scenes, tokens and weapons](supported-subset.md)
+- [Terrain flags and NPC personas](terrain-and-personas.md)
