@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const guide = readFileSync(new URL('../../docs/foundry-adapter.md', import.meta.url), 'utf8');
+const guide = readFileSync(new URL('../../docs/foundry-adapter/install.md', import.meta.url), 'utf8');
 const command = guide.match(/As GM, create a Script macro containing:[\s\S]*?```js\s*([\s\S]*?)```/)[1];
 const run = new (Object.getPrototypeOf(async function () {}).constructor)('game', 'ui', command);
 

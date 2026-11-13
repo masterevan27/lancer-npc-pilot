@@ -10,10 +10,18 @@ repository root.
 
 ## Core documents
 
-- [Lancer NPC Pilot design](design.md) - Intent, anti-goals, architecture and milestones for the GM-approved Lancer NPC co-pilot.
-- [Foundry adapter setup and acceptance](foundry-adapter.md) - GM setup, supported scenes, auto mode, banter and live acceptance gates.
-- [NPC mechanics and tactical behavior roadmap](roadmap.md) - Verified mechanics progress and planned book-derived NPC behavior policies.
+- [Lancer NPC Pilot design](design.md) - Intent, goals, anti-goals, constraints and milestones; links to the topic pages below.
+- [Foundry adapter setup and acceptance](foundry-adapter.md) - Hub for installing, operating and accepting the GM-only Foundry adapter; each topic has its own page.
+- [NPC mechanics and tactical behavior roadmap](roadmap.md) - Hub listing every roadmap card, the delivery order and links to each phase page.
 - [Versioning and Foundry releases](VERSIONING.md) - Version source, increment rules and the Foundry release packaging procedure.
+
+## Topic pages
+
+Read the one you need instead of a whole hub.
+
+- [Design pages](design/index.md) - Architecture and the module policy selector design.
+- [Foundry adapter guide](foundry-adapter/index.md) - Install, troubleshooting, supported subset, terrain, execution, policy mode, Cataphract mechanics, auto mode and banter, NPC coverage and acceptance gates.
+- [Roadmap pages](roadmap/index.md) - The playable 2v2 milestone, the three phases and the 0.7.0 baseline.
 
 ## Specifications, plans and evidence
 

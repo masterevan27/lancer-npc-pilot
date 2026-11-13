@@ -1,7 +1,7 @@
 ---
 type: Design
 title: "Lancer NPC Pilot design"
-description: "Intent, anti-goals, architecture and milestones for the GM-approved Lancer NPC co-pilot."
+description: "Intent, goals, anti-goals, constraints and milestones for the GM-approved Lancer NPC co-pilot, with links to architecture and selector pages."
 status: draft
 tags: [architecture, foundry]
 sources:
@@ -10,7 +10,7 @@ sources:
   - resource: ../relay/server.mjs
 generated:
   by: claude/claude-opus-5-5
-  at: 2026-11-07T06:20:41Z
+  at: 2026-11-13T06:00:00Z
 ---
 # Lancer NPC Pilot — design
 
@@ -22,6 +22,15 @@ Foundry geometry conformance checks. The [adapter guide](foundry-adapter.md) rec
 the broader goals below remain the intended direction. The owner asked for building to start
 without a question round, so choices marked *(builder's call)* were made by
 the agent and may be revisited.
+
+Detailed design topics have their own pages:
+
+- [Architecture: relay, pure core and adapter](design/architecture.md) - why a
+  relay, the snapshot sketch, options, prompt/reply, relay API and execution.
+- [Module policy selector design](design/policy-selector.md) - the relay-free
+  selector added in development 0.8.0.
+- [Auto mode and banter design](superpowers/specs/2026-11-07-auto-mode-and-banter-design.md)
+  and its [adapter page](foundry-adapter/auto-mode-and-banter.md).
 
 ## Intent
 
@@ -72,31 +81,9 @@ to apply.
 
 ## Module policy selector (development 0.8.0)
 
-The [approved policy contract](superpowers/specs/2026-11-03-npc-policy-contract-design.md)
-now has a pure selector and opt-in client mode. Closed reviewed records bind
-one native class LID to a T1 base Cataphract policy. Native feature sources are
-captured before asynchronous SHA-256, checked against catalogue fingerprints,
-and kept out of model requests. Identity/loadout ambiguity is unconfigured;
-feature drift excludes the affected choices and reports partial coverage.
-
-Supported legal candidates retain endpoint identities before policy pruning.
-Ranking uses soft order, class weighted utility, bounded individual preference,
-then existing basic score, followed by movement cost and canonical identity.
-Hard orders never relax; missing mandatory native geometry requires input.
-Production supplies a free order. Other structured orders are core interfaces
-for injected inputs, with no objective editor yet. Development 0.9.0 adds scoped,
-exact-source Cataphract Trample/Impale choices, standalone grapple lifecycle and
-native Shield card application. Unsupported target interactions, useful incoming
-protection, reactions and new live acceptance remain explicit gaps. See the
-[mechanics scope](foundry-adapter.md#cataphract-mechanics-development-090-source).
-This is a bounded one-move/one-action search with one shortest path per
-endpoint, not an optimal multi-turn planner.
-
-Policy planning never requests a relay or a secret. Its review holds private
-authoritative choices, re-reads board/configuration after hashing and before
-approval, and refuses stale/no-choice/duplicate approval before execution.
-[Selector evidence](review-evidence/2026-11-03-policy-selector.md) separates
-synthetic ranking tests, installed-code conformance and unverified live gates.
+Development 0.8.0 adds an opt-in, relay-free policy selector that binds a native
+class to a reviewed T1 Cataphract policy and ranks supported legal choices. See
+the [policy selector design](design/policy-selector.md).
 
 ## Anti-goals (a failure even if it "works")
 
@@ -110,126 +97,9 @@ synthetic ranking tests, installed-code conformance and unverified live gates.
 
 ## Architecture
 
-```
-GM's browser (Foundry client, GM only)
-  foundry-module/  lancer-npc-pilot
-    extract   : Foundry -> plain JSON snapshot (combat, tokens, stats, features)
-    options   : snapshot -> ranked legal TurnOptions   (pure, Node-testable)
-    prompt    : snapshot + options + persona -> messages (pure)
-    choose    : POST relay /v1/decide, validate reply, fall back to top option
-    review UI : approval dialog
-    execute   : move token, set targets, start Lancer flows, post NPC line
-        |
-        | HTTP, shared-secret header
-        v
-Owner PC  relay/  (Node, no runtime deps, binds 127.0.0.1:5090)
-    provider "anthropic"  -> Anthropic Messages API (key from env)
-    provider "openai"     -> Ollama / KoboldCPP / any OpenAI-compatible URL
-```
-
-Why a relay *(builder's call)*: it keeps the API key out of the browser, and
-it lets the HTTPS Foundry page reach the local model through one localhost
-endpoint. Ollama binds localhost only on the owner PC, so the relay runs there
-too. The GM plays from the owner PC (RTX 3080 12 GB). Before relying on it,
-verify that the browser allows `https://foundry.lab…` to call
-`http://127.0.0.1:5090`: Chromium treats localhost as a secure context, but
-the Private Network Access preflight may need
-`Access-Control-Allow-Private-Network: true`.
-
-### Pure core, thin adapter
-
-All logic that doesn't need Foundry (option generation, scoring, prompt
-building, reply parsing) works on a plain-JSON **snapshot** so it runs under
-`node --test` with fixtures. The Foundry adapter is a thin layer for reading
-documents, wall-collision and line-of-sight queries, and execution. When the
-pure core needs walls or LOS, the adapter precomputes them into the snapshot
-(e.g. a `blocked` cell set, and a `los(a,b)` table for candidate cells ×
-targets). Use Foundry v13 APIs (`CONFIG.Canvas.polygonBackends`,
-`token.document.move` or the movement API, `canvas.grid`) and check them
-against the v13 API docs.
-
-### Snapshot (sketch, builder refines)
-
-```json
-{
-  "round": 3, "activeTokenId": "t1",
-  "grid": {"type": "hex|square", "size": 100, "distance": 1},
-  "tokens": [{
-    "id": "t1", "actorId": "a1", "name": "Sunzi", "side": "hostile|friendly|neutral",
-    "isNpc": true, "pos": {"x": 15, "y": 9}, "size": 1,
-    "hp": [13, 22], "heat": [2, 6], "structure": [1, 1], "stress": [1, 1],
-    "armor": 1, "evasion": 8, "edef": 10, "speed": 4, "sensors": 10,
-    "statuses": ["IMPAIRED"],
-    "weapons": [{"itemId": "w1", "name": "Assault Rifle", "type": "Rifle",
-                 "range": [{"type": "Range", "val": 10}], "damage": "1d6+2 Kinetic",
-                 "accuracy": 0, "tags": ["Loading"], "loaded": true, "uses": null}],
-    "features": [{"itemId": "f1", "name": "...", "kind": "trait|system|reaction", "text": "..."}],
-    "persona": "optional text"
-  }],
-  "blocked": ["x,y", "..."],
-  "losFrom": {"x,y": {"targetTokenId": true}}
-}
-```
-
-Read Lancer data paths from the installed Lancer system version
-(`actor.system.hp.value/max`, `heat`, `structure`, `stress`, `evasion`,
-`edef`, `armor`, `speed`, `sensor_range`; NPC weapons are items of type
-`npc_feature` with weapon data, tier-dependent stats). Verify each against the
-system source; the Uplink's `snapshotActor` (GPL, may be ported) is a working
-reference for the stat block.
-
-### Options
-
-A `TurnOption` = `{id, move: {to, path, cost} | null, action: {kind, itemId?,
-targetTokenIds?} , score, facts}`. `facts` are numbers the prompt shows the
-model: hit chance, expected damage, cover, distance to nearest threat, whether
-the NPC ends in an enemy's threat range, and its heat after acting.
-
-Hit chance in LANCER: 1d20 + accuracy/difficulty (the highest of N d6, signed)
-against Evasion (or E-Defense for tech). Compute it exactly, not by sampling.
-Generate candidates from reachable cells (BFS within Speed and around blocked
-cells) × usable weapons × in-range targets, plus no-attack options (hold
-cover, Boost to close distance, retreat). Prune by score to the top `N`
-(default 8, a setting) while keeping variety: at least one aggressive, one
-defensive and one repositioning option when they exist.
-
-### Prompt and reply
-
-The system prompt covers the NPC's role, persona, the rules for picking, and
-"reply with JSON only". The user message holds a compact battlefield summary
-and a numbered option list in plain words with `facts`. Reply schema:
-`{"option": "<id>", "reason": "<= 25 words", "line": "<optional in-character
-line, <= 20 words>"}`. Parse tolerantly (strip code fences). An id that isn't
-in the list gets one retry, then falls back to the top-scored option and is
-labelled "fallback" in the UI.
-
-### Relay API
-
-- `POST /v1/decide` with `{provider, model, system, messages, maxTokens,
-  temperature}`, returning `{text, provider, model, usage}`.
-- `GET /v1/health` returns the configured providers. It reports whether a key
-  is present, never the key itself.
-- Auth: the `X-Pilot-Secret` header must match `PILOT_SHARED_SECRET`.
-- CORS: allow only the origins in `PILOT_ALLOWED_ORIGINS` (default
-  `https://foundry.lab.spiralfrenzy.com`), and handle the PNA preflight.
-- Config comes from env vars or a Git-ignored `relay/.env`:
-  `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` (current relay default:
-  `claude-opus-5-5`; actual API access remains unverified), `OPENAI_BASE_URL`
-  (default `http://127.0.0.1:11434/v1`), `OPENAI_MODEL` (default: whatever
-  `ollama list` shows as suitable; the owner runs gpt-oss), `PORT=5090`,
-  `HOST=127.0.0.1`.
-- Timeouts, a clear error body, and no logging of prompts unless
-  `PILOT_LOG_PROMPTS=1`.
-
-### Execution (module)
-
-Move the token along the chosen path, set the GM's targets, then start the
-item's Lancer weapon-attack flow. Look up the flow entry point in the
-installed system; the Uplink hooks `lancer.postFlow.*`, which shows the flows
-exist. Let the system roll and apply damage under its normal GM confirmation.
-Post the NPC line as a chat message spoken by the token. Re-snapshot before
-executing; if the state changed (the token moved, the target died), re-plan
-instead of executing a stale option.
+A GM-only Foundry module (pure core plus thin adapter) asks a relay on the
+owner's PC for a model decision; the relay holds the provider key. See the
+[architecture](design/architecture.md).
 
 ## Constraints
 
@@ -267,5 +137,5 @@ anti-goals hold.
 Development 0.10.0 adds off-by-default auto mode and NPC banter. They keep the
 anti-goals: the AI still never rolls or invents outcomes, execution still needs
 the existing gates, and the key stays relay-side. See the
-[adapter guide](foundry-adapter.md#auto-mode-and-banter-development-0100) and the
+[adapter guide](foundry-adapter/auto-mode-and-banter.md) and the
 [design](superpowers/specs/2026-11-07-auto-mode-and-banter-design.md).

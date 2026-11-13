@@ -34,7 +34,7 @@ These guides do not enable special abilities. [Coverage evidence](docs/review-ev
 
 The [roadmap](docs/roadmap.md) records remaining mechanics work and the planned
 move toward book-derived class policies, beginning with a T1 base Cataphract.
-Development 0.10.0 adds off-by-default auto mode and NPC banter (source only, live acceptance open; auto-roll is deferred). See the [adapter guide](docs/foundry-adapter.md#auto-mode-and-banter-development-0100).
+Development 0.10.0 adds off-by-default auto mode and NPC banter (source only, live acceptance open; auto-roll is deferred). See the [adapter guide](docs/foundry-adapter/auto-mode-and-banter.md).
 Development 0.8.0 adds explicit client **Decision mode → Module policy (no relay)**.
 The first maintained binding is a T1 base Cataphract. Development 0.9.0 adds
 source-checked Trample routes/damage, native-save Impale continuation, standalone
@@ -42,7 +42,7 @@ grapple management and source-specific Shield damage application. Unknown target
 passives, prior turn history and stale native cards retain manual paths. This
 source has automated/native-source checks; disposable-world acceptance of the
 new mechanics remains open. Model mode stays the default. See
-[binding and review instructions](docs/foundry-adapter.md#module-policy-mode-development-080)
+[binding and review instructions](docs/foundry-adapter/policy-mode.md)
 and [selector evidence and remaining gates](docs/review-evidence/2026-11-03-policy-selector.md).
 
 ![Native Impale approval review showing the straight route, save timing, conditional carry and remaining actions](docs/assets/cataphract-review-0.9.0-2026-11-03.jpg)
